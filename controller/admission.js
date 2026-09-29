@@ -1,0 +1,1601 @@
+document.addEventListener("keydown", function (event) {
+  // Verificamos si la tecla presionada es ENTER
+  if (event.key === "Enter") {
+    const activo = document.activeElement;
+
+    // Lista de los IDs de los inputs y selects de tu formulario en el orden correcto
+    const idsCampos = [
+      "input-tipo-servicio",
+      "input-documento",
+      "input-destinatario",
+      "input-direccion",
+      "input-departamento",
+      "input-provincia",
+      "input-distrito",
+      "input-peso",
+    ];
+
+    // Comprobamos si el elemento donde estás parado actualmente está dentro de nuestra lista
+    const indiceActual = idsCampos.indexOf(activo.id);
+
+    if (indiceActual !== -1) {
+      event.preventDefault(); // Evita que se envíe el formulario o lance el Toast por error
+
+      // Si estás en el ÚLTIMO campo (el peso), ejecutamos directamente la función de guardar/añadir
+      if (indiceActual === idsCampos.length - 1) {
+        if (typeof window.agregarEnvioTemporal === "function") {
+          window.agregarEnvioTemporal(event);
+        }
+      } else {
+        // Si estás en cualquier otro campo, salta automáticamente al siguiente campo de la lista
+        const siguienteId = idsCampos[indiceActual + 1];
+        const siguienteElemento = document.getElementById(siguienteId);
+
+        if (siguienteElemento) {
+          siguienteElemento.focus();
+        }
+      }
+    }
+  }
+});
+window.cambiarModoOperacion = function () {
+  const radioBarras = document.getElementById("radio-generar-barras");
+  const radioExcel = document.getElementById("radio-exportar-excel");
+
+  const btnGenerar = document.getElementById("btn-generar-barras");
+
+  const fieldsetTipo = document.getElementById("fieldset-tipo-servicio");
+  const selectTipo = document.getElementById("input-tipo-servicio-exportar");
+
+  const fieldsetGuia = document.getElementById("fieldset-guia");
+  const inputSim = document.getElementById("input-sim");
+
+  const btnExportar = document.getElementById("btn-exportar-excel");
+
+  if (radioBarras.checked) {
+    // --- ACTIVAR MODO BARRAS ---
+    btnGenerar.disabled = false;
+    btnGenerar.classList.remove("opacity-50", "cursor-not-allowed");
+
+    // Desactivar modo Excel
+    selectTipo.disabled = true;
+    inputSim.disabled = true;
+    btnExportar.disabled = true;
+
+    // Estilos visuales desactivados para Excel
+    fieldsetTipo.classList.add("opacity-60", "bg-slate-100");
+    fieldsetGuia.classList.add("opacity-60", "bg-slate-100");
+  } else if (radioExcel.checked) {
+    // --- ACTIVAR MODO EXCEL ---
+    btnGenerar.disabled = true;
+    btnGenerar.classList.add("opacity-50", "cursor-not-allowed");
+
+    // Activar modo Excel
+    selectTipo.disabled = false;
+    inputSim.disabled = false;
+    btnExportar.disabled = false;
+
+    // Estilos visuales activados para Excel
+    fieldsetTipo.classList.remove("opacity-60", "bg-slate-100");
+    fieldsetGuia.classList.remove("opacity-60", "bg-slate-100");
+  }
+};
+// Declaración del array temporal para acumular los envíos antes de guardarlos en la base de datos
+let listaEnviosTemporal = [];
+
+// Declaración de la variable para la instancia de Grid.js del listado diario (corregida a null para evitar conflictos de tipo)
+let gridInstanceListadoDiario = null;
+
+// Variable global para almacenar y rastrear el ID de la sucursal actual
+let sucursalActualId = null;
+
+// Variable global para almacenar y rastrear el ID del colaborador actual
+let colaboradorActualId = null;
+
+window.limpiarModalEnvios = function () {
+  // 1. Vaciar el arreglo temporal
+  if (typeof listaEnviosTemporal !== "undefined") {
+    listaEnviosTemporal = [];
+  }
+
+  // 2. Destruir formalmente la instancia de Grid.js liberando memoria
+  if (typeof gridInstanceEnvios !== "undefined" && gridInstanceEnvios) {
+    try {
+      gridInstanceEnvios.destroy();
+    } catch (e) {
+      console.warn("Aviso al destruir Grid.js:", e);
+    }
+    gridInstanceEnvios = null;
+  }
+
+  // 3. Limpiar físicamente el HTML interno del contenedor de la tabla
+  const contenedor = document.getElementById("wrapper-gridjs-envios");
+  if (contenedor) {
+    contenedor.innerHTML = "";
+  }
+
+  // 4. Restablecer todos los campos del formulario de ingreso a su estado original
+  const formIngreso = document.getElementById("form-ingreso-envio");
+  if (formIngreso) {
+    formIngreso.reset();
+  }
+
+  // 5. Restablecer contadores visuales a 0
+  const inputTotal = document.getElementById("modal-total-envios");
+  const inputSen = document.getElementById("modal-total-envios-sen");
+  const inputSel = document.getElementById("modal-total-envios-sel");
+
+  if (inputTotal) inputTotal.value = 0;
+  if (inputSen) inputSen.value = 0;
+  if (inputSel) inputSel.value = 0;
+};
+
+function abrirModalEnvio() {
+  // 1. Limpiamos todo previamente usando la función centralizada
+  if (typeof window.limpiarModalEnvios === "function") {
+    window.limpiarModalEnvios();
+  }
+
+  // 2. Validar y asignar los datos del usuario logueado de forma global
+  if (window.usuarioLogueado) {
+    window.sucursalActualId = window.usuarioLogueado.sucursal?.id;
+    window.colaboradorActualId = window.usuarioLogueado.colaborador?.id;
+
+    const inputSucursalText = document.getElementById("modal-sucursal-text");
+    if (inputSucursalText) {
+      inputSucursalText.value =
+        window.usuarioLogueado.sucursal?.nombre || "SIN SUCURSAL";
+    }
+  }
+
+  // 3. Mostrar el modal en pantalla removiendo la clase 'hidden'
+  const modalEnvio = document.getElementById("modal-envio");
+  if (modalEnvio) {
+    modalEnvio.classList.remove("hidden");
+  }
+
+  // 4. Poblar los selectores del formulario de forma automática
+  if (typeof cargarDepartamentos === "function") {
+    cargarDepartamentos();
+  }
+
+  if (typeof cargarTiposDeServicio === "function") {
+    cargarTiposDeServicio();
+  }
+}
+
+function cerrarModalEnvio() {
+  // 1. Ocultar el modal visualmente agregando la clase 'hidden'
+  const modalEnvio = document.getElementById("modal-envio");
+  if (modalEnvio) {
+    modalEnvio.classList.add("hidden");
+  }
+
+  // 2. Ejecutar la misma limpieza total al cerrar
+  if (typeof window.limpiarModalEnvios === "function") {
+    window.limpiarModalEnvios();
+  }
+}
+
+window.agregarEnvioTemporal = async function (event) {
+  if (event) event.preventDefault();
+
+  const selectServicio = document.getElementById("input-tipo-servicio");
+  const inputDocumento = document.getElementById("input-documento");
+  const inputDestinatario = document.getElementById("input-destinatario");
+  const inputDireccion = document.getElementById("input-direccion");
+  const selectDep = document.getElementById("input-departamento");
+  const selectProv = document.getElementById("input-provincia");
+  const selectDistrito = document.getElementById("input-distrito");
+  const inputPeso = document.getElementById("input-peso");
+
+  // 1. VALIDACIÓN SECUENCIAL CAMPO POR CAMPO CON FOCO AUTOMÁTICO
+  if (!selectServicio || !selectServicio.value) {
+    if (typeof window.mostrarToast === "function") {
+      window.mostrarToast(
+        "Por favor, seleccione un tipo de servicio.",
+        "error",
+      );
+    }
+    if (selectServicio) selectServicio.focus();
+    return;
+  }
+
+  if (!inputDocumento || !inputDocumento.value.trim()) {
+    if (typeof window.mostrarToast === "function") {
+      window.mostrarToast(
+        "Por favor, ingrese el número de documento.",
+        "error",
+      );
+    }
+    if (inputDocumento) inputDocumento.focus();
+    return;
+  }
+
+  if (!inputDestinatario || !inputDestinatario.value.trim()) {
+    if (typeof window.mostrarToast === "function") {
+      window.mostrarToast(
+        "Por favor, ingrese el nombre del destinatario.",
+        "error",
+      );
+    }
+    if (inputDestinatario) inputDestinatario.focus();
+    return;
+  }
+
+  if (!inputDireccion || !inputDireccion.value.trim()) {
+    if (typeof window.mostrarToast === "function") {
+      window.mostrarToast("Por favor, ingrese la dirección.", "error");
+    }
+    if (inputDireccion) inputDireccion.focus();
+    return;
+  }
+
+  if (!selectDistrito || !selectDistrito.value) {
+    if (typeof window.mostrarToast === "function") {
+      window.mostrarToast(
+        "Por favor, seleccione el distrito de destino.",
+        "error",
+      );
+    }
+    if (selectDistrito) selectDistrito.focus();
+    return;
+  }
+
+  if (
+    !inputPeso ||
+    !inputPeso.value.trim() ||
+    parseFloat(inputPeso.value) <= 0
+  ) {
+    if (typeof window.mostrarToast === "function") {
+      window.mostrarToast("Por favor, ingrese un peso válido.", "error");
+    }
+    if (inputPeso) inputPeso.focus();
+    return;
+  }
+
+  const tipoServicioId = selectServicio.value;
+  const textoServicio = selectServicio.selectedOptions[0]
+    ? selectServicio.selectedOptions[0].text.trim().toUpperCase()
+    : "";
+
+  try {
+    // 2. Obtener la sucursal activa de la sesión
+    const sesionUsuario = JSON.parse(
+      sessionStorage.getItem("sesion_usuario") || "{}",
+    );
+
+    const sucursalId =
+      sessionStorage.getItem("sucursal_id") ||
+      sesionUsuario.sucursal?.id ||
+      sesionUsuario.sucursal_id ||
+      null;
+
+    if (!sucursalId) {
+      if (typeof window.mostrarToast === "function") {
+        window.mostrarToast(
+          "No se encontró la sucursal activa en la sesión.",
+          "error",
+        );
+      }
+      return;
+    }
+
+    const hoy = new Date().toISOString().split("T")[0];
+    let registrosEnBD = 0;
+
+    // 3. CONSULTA SEGURA DESDE LA TABLA INTERMEDIA (Filtra correctamente por sucursal, servicio y fecha)
+    try {
+      const { data: documentosHoy, error: queryError } =
+        await window.supabaseClient
+          .from("guia_documento")
+          .select(
+            `
+            documento!inner (
+              id,
+              tipo_servicio_id,
+              fecha_ingreso
+            ),
+            guia!inner (
+              sucursal_id
+            )
+          `,
+          )
+          .eq("documento.tipo_servicio_id", tipoServicioId)
+          .eq("guia.sucursal_id", sucursalId)
+          .gte("documento.fecha_ingreso", `${hoy}T00:00:00`)
+          .lte("documento.fecha_ingreso", `${hoy}T23:59:59`);
+
+      if (!queryError && documentosHoy) {
+        registrosEnBD = documentosHoy.length; // Cuenta estrictamente los de ESTA sucursal, hoy y de este servicio
+      }
+    } catch (dbErr) {
+      console.warn(
+        "Aviso: No se pudieron consultar los registros previos. Iniciando en 0.",
+        dbErr,
+      );
+      registrosEnBD = 0;
+    }
+
+    // Contar los que ya están acumulados temporalmente en esta sesión actual para este mismo servicio
+    const registrosEnTemporal = listaEnviosTemporal.filter(
+      (item) => item.tipo_servicio_id === tipoServicioId,
+    ).length;
+
+    // El nuevo orden correcto para esta sucursal específica y tipo de servicio
+    const nuevoOrden = registrosEnBD + registrosEnTemporal + 1;
+
+    const valorPesoInput = parseFloat(inputPeso.value) || 0;
+    const pesoTransformado = (valorPesoInput / 1000).toFixed(3);
+
+    // Obtener la jerarquía completa del Ubigeo
+    const textoDep =
+      selectDep && selectDep.selectedOptions[0]
+        ? selectDep.selectedOptions[0].text.trim()
+        : "";
+
+    const textoProv =
+      selectProv && selectProv.selectedOptions[0]
+        ? selectProv.selectedOptions[0].text.trim()
+        : "";
+
+    const textoDist =
+      selectDistrito && selectDistrito.selectedOptions[0]
+        ? selectDistrito.selectedOptions[0].text.trim()
+        : "";
+
+    const ubigeoCompleto = [textoDep, textoProv, textoDist]
+      .filter(Boolean)
+      .join(" / ");
+
+    const nuevoItem = {
+      id_temporal: Date.now(),
+      tipo_servicio_id: tipoServicioId,
+      tipo_servicio_texto: textoServicio,
+      orden: nuevoOrden,
+      documento: inputDocumento.value.toUpperCase(),
+      destinatario: inputDestinatario.value.toUpperCase(),
+      direccion: inputDireccion.value.toUpperCase(),
+      ubigeo_id: selectDistrito.value,
+      ubigeo_texto: ubigeoCompleto,
+      peso: pesoTransformado,
+      cantidad: 1,
+    };
+
+    // 4. Agregamos al array temporal
+    listaEnviosTemporal.push(nuevoItem);
+
+    // 5. 🛠️ Renderizamos inmediatamente
+    if (typeof window.renderizarTablaTemporal === "function") {
+      window.renderizarTablaTemporal();
+    } else {
+      console.error(
+        "La función renderizarTablaTemporal no está definida globalmente.",
+      );
+    }
+
+    // 6. 🧹 LIMPIEZA COMPLETA DE TODOS LOS CAMPOS DEL FORMULARIO
+    document.getElementById("form-ingreso-envio").reset();
+
+    // Restablecer selects dependientes de ubicación
+    if (selectProv) {
+      selectProv.innerHTML = '<option value="">Seleccione...</option>';
+      selectProv.disabled = true;
+    }
+
+    if (selectDistrito) {
+      selectDistrito.innerHTML = '<option value="">Seleccione...</option>';
+      selectDistrito.disabled = true;
+    }
+
+    // Volver el foco al primer campo para el siguiente registro rápido
+    selectServicio.focus();
+  } catch (err) {
+    console.error("Error al procesar el envío temporal:", err);
+    if (typeof window.mostrarToast === "function") {
+      window.mostrarToast("No se pudo procesar el registro temporal.", "error");
+    }
+  }
+};
+
+let gridInstanceEnvios = null;
+
+window.renderizarTablaTemporal = function () {
+  const contenedor = document.getElementById("wrapper-gridjs-envios");
+
+  if (!contenedor) return;
+
+  // 1. Calcular totales reales
+
+  const totalGral = listaEnviosTemporal.length;
+
+  const totalSen = listaEnviosTemporal.filter((i) => {
+    const texto = (i.tipo_servicio_texto || "").toUpperCase();
+
+    return texto.includes("SEN");
+  }).length;
+
+  const totalSel = listaEnviosTemporal.filter((i) => {
+    const texto = (i.tipo_servicio_texto || "").toUpperCase();
+
+    return texto.includes("SEL");
+  }).length;
+
+  // 2. Asignar de forma explícita a los inputs de la interfaz
+
+  const inputTotal = document.getElementById("modal-total-envios");
+
+  const inputSen = document.getElementById("modal-total-envios-sen");
+
+  const inputSel = document.getElementById("modal-total-envios-sel");
+
+  if (inputTotal) {
+    inputTotal.value = totalGral;
+
+    inputTotal.setAttribute("value", totalGral);
+  }
+
+  if (inputSen) {
+    inputSen.value = totalSen;
+
+    inputSen.setAttribute("value", totalSen);
+  }
+
+  if (inputSel) {
+    inputSel.value = totalSel;
+
+    inputSel.setAttribute("value", totalSel);
+  }
+
+  // 3. Preparar datos para Grid.js
+
+  const datosParaGrid = listaEnviosTemporal.map((item) => [
+    item.orden,
+
+    item.tipo_servicio_texto,
+
+    item.documento,
+
+    item.destinatario,
+
+    `${item.direccion} (${item.ubigeo_texto})`,
+
+    `${item.peso} kg`,
+
+    `<button type="button" onclick="eliminarEnvioTemporal(${item.id_temporal})" class="text-red-500 hover:text-red-700 p-1 transition-colors" title="Eliminar">
+
+       <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 inline-block" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+
+         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1,1 0 00-1 1v3M4 7h16" />
+
+       </svg>
+
+     </button>`,
+  ]);
+
+  // 4. Renderizado seguro con Grid.js (Soluciona el problema de visualización del primer registro)
+
+  if (gridInstanceEnvios) {
+    // Si ya existe la instancia, actualizamos configuración y forzamos render
+
+    gridInstanceEnvios
+
+      .updateConfig({
+        data: datosParaGrid,
+      })
+
+      .forceRender();
+  } else {
+    // Si no existe, limpiamos el contenedor por seguridad y creamos la nueva instancia
+
+    contenedor.innerHTML = "";
+
+    gridInstanceEnvios = new gridjs.Grid({
+      columns: [
+        { name: "Ord", width: "60px" },
+
+        { name: "Servicio", width: "110px" },
+
+        { name: "Doc Emitido", width: "110px" },
+
+        { name: "Destinatario", width: "150px" },
+
+        { name: "Dirección / Ubigeo", width: "auto" },
+
+        { name: "Peso", width: "80px" },
+
+        {
+          name: "Acciones",
+
+          width: "80px",
+
+          formatter: (cell) => gridjs.html(cell),
+        },
+      ],
+
+      data: datosParaGrid,
+
+      pagination: false,
+
+      search: false,
+
+      sort: true,
+
+      language: {
+        noRecordsFound: "No hay envíos agregados en este lote.",
+      },
+
+      style: {
+        table: { "font-size": "11px", width: "100%" },
+
+        th: {
+          "background-color": "#f8fafc",
+
+          color: "#334155",
+
+          "font-weight": "600",
+
+          padding: "8px",
+        },
+
+        td: { padding: "6px 8px" },
+      },
+    }).render(contenedor);
+  }
+};
+
+function eliminarEnvioTemporal(idTemporal) {
+  // Filtrar el array quitando el elemento seleccionado
+
+  listaEnviosTemporal = listaEnviosTemporal.filter(
+    (item) => item.id_temporal !== idTemporal,
+  );
+  // Actualizar la tabla y los contadores inmediatamente
+
+  renderizarTablaTemporal();
+}
+// Función asíncrona principal encargada de guardar de forma definitiva la guía y sus documentos asociados en Supabase
+async function guardarGuiaYDocumentosDefinitivo() {
+  // Captura el elemento input de la Hoja de Ruta / Valija en el DOM
+  const hojaRutaInput = document.getElementById("modal-hoja-ruta");
+
+  // Obtiene el valor limpio de la hoja de ruta o asigna una cadena vacía si no existe
+  const hojaRuta = hojaRutaInput ? hojaRutaInput.value.trim() : "";
+
+  // Validación: si la hoja de ruta está vacía, muestra una alerta y posiciona el cursor en el input
+  if (!hojaRuta) {
+    if (typeof window.mostrarToast === "function") {
+      window.mostrarToast(
+        "Debe ingresar el número de Hoja de Ruta / Valija.",
+        "error",
+      );
+    }
+    if (hojaRutaInput) hojaRutaInput.focus();
+    return;
+  }
+
+  // Busca el selector del tipo de guía; por defecto toma "admision" si no se encuentra en el DOM
+  const selectTipoGuia =
+    document.getElementById("modal-tipo-guia") ||
+    document.getElementById("input-tipo-guia");
+  const tipoGuia =
+    selectTipoGuia && selectTipoGuia.value
+      ? selectTipoGuia.value.trim().toLowerCase()
+      : "admision";
+
+  // Validación: asegura que el arreglo temporal contenga al menos un envío antes de proceder
+  if (
+    typeof listaEnviosTemporal !== "undefined" &&
+    (!listaEnviosTemporal || listaEnviosTemporal.length === 0)
+  ) {
+    if (typeof window.mostrarToast === "function") {
+      window.mostrarToast(
+        "Debe agregar al menos un envío a la lista.",
+        "error",
+      );
+    }
+    return;
+  }
+
+  // Variables para almacenar temporalmente los IDs creados por si se requiere rollback
+  let guiaIdGenerado = null;
+  let idsDocumentosInsertados = [];
+
+  try {
+    // 1. Recuperar los datos de la sesión del usuario y la sucursal activa desde el almacenamiento local
+    const sesionUsuario = JSON.parse(
+      sessionStorage.getItem("sesion_usuario") || "{}",
+    );
+
+    const sucursalId =
+      sessionStorage.getItem("sucursal_id") ||
+      sesionUsuario.sucursal?.id ||
+      sesionUsuario.sucursal_id ||
+      null;
+    const colaboradorId =
+      sessionStorage.getItem("colaborador_id") ||
+      sesionUsuario.colaborador?.id ||
+      sesionUsuario.colaborador_id ||
+      null;
+
+    // Validación de seguridad: si no se detecta la sucursal activa, interrumpe el proceso
+    if (!sucursalId) {
+      if (typeof window.mostrarToast === "function") {
+        window.mostrarToast(
+          "No se encontró la sucursal activa en la sesión. Vuelva a iniciar sesión.",
+          "error",
+        );
+      }
+      return;
+    }
+
+    // Validación de seguridad: si no se detecta el ID del colaborador, interrumpe el proceso
+    if (!colaboradorId) {
+      if (typeof window.mostrarToast === "function") {
+        window.mostrarToast(
+          "No se encontró el ID del colaborador en la sesión. Vuelva a iniciar sesión.",
+          "error",
+        );
+      }
+      return;
+    }
+
+    // 2. Obtener el siguiente número correlativo independiente filtrando por SUCURSAL y por TIPO de guía
+    const { data: ultimoCorrelativo, error: errCorr } =
+      await window.supabaseClient
+        .from("guia")
+        .select("correlativo")
+        .eq("tipo", tipoGuia)
+        .eq("sucursal_id", sucursalId)
+        .order("correlativo", { ascending: false })
+        .limit(1);
+
+    // Si ocurre un error al consultar el correlativo, lanza una excepción
+    if (errCorr) throw errCorr;
+
+    // Calcula el siguiente correlativo sumando 1 al último encontrado, o asigna 1 si es el primero
+    const siguienteCorrelativo =
+      ultimoCorrelativo && ultimoCorrelativo.length > 0
+        ? ultimoCorrelativo[0].correlativo + 1
+        : 1;
+
+    // 3. Insertar el encabezado de la guía maestra en la tabla 'guia' de Supabase
+    const { data: guiaInsertada, error: errGuia } = await window.supabaseClient
+      .from("guia")
+      .insert([
+        {
+          tipo: tipoGuia,
+          correlativo: siguienteCorrelativo,
+          hoja_ruta: hojaRuta,
+          cantidad: listaEnviosTemporal.length,
+          sucursal_id: sucursalId,
+        },
+      ])
+      .select()
+      .single();
+
+    // Si ocurre un error en la inserción de la guía, lanza una excepción
+    if (errGuia) throw errGuia;
+
+    // Almacena el ID único de la guía recién creada
+    guiaIdGenerado = guiaInsertada.id;
+
+    // 4. Mapear y preparar la estructura de los documentos (YA SIN guia_id)
+    const documentosParaInsertar = listaEnviosTemporal.map((item) => ({
+      tipo_servicio_id: item.tipo_servicio_id,
+      orden: parseInt(item.orden),
+      doc_emitido: item.documento,
+      guia_sim: null,
+      codigo_barras: null,
+      destinatario: item.destinatario,
+      direccion: item.direccion,
+      ubigeo_id: parseInt(item.ubigeo_id),
+      peso: String(item.peso),
+      cantidad: parseInt(item.cantidad),
+      colaborador_id: colaboradorId,
+      estado_id: 1,
+    }));
+
+    // 5. Insertar los documentos en la tabla 'documento' y solicitar que devuelva sus nuevos IDs (.select())
+    const { data: docsInsertados, error: errDocs } = await window.supabaseClient
+      .from("documento")
+      .insert(documentosParaInsertar)
+      .select("id");
+
+    if (errDocs) throw errDocs;
+
+    // Guardamos los IDs de los documentos creados para usarlos en el mapeo de la relación
+    idsDocumentosInsertados = docsInsertados.map((doc) => doc.id);
+
+    // 6. Crear las relaciones en la tabla intermedia 'guia_documento' (Muchos a Muchos)
+    const relacionesGuiaDocumento = idsDocumentosInsertados.map((docId) => ({
+      guia_id: guiaIdGenerado,
+      documento_id: docId,
+    }));
+
+    const { error: errRelacion } = await window.supabaseClient
+      .from("guia_documento")
+      .insert(relacionesGuiaDocumento);
+
+    // 🛑 ROLLBACK ESTRICTO: Si falla la inserción en la tabla intermedia, limpiamos documentos creados y la guía maestra
+    if (errRelacion) {
+      if (idsDocumentosInsertados.length > 0) {
+        await window.supabaseClient
+          .from("documento")
+          .delete()
+          .in("id", idsDocumentosInsertados);
+      }
+      if (guiaIdGenerado) {
+        await window.supabaseClient
+          .from("guia")
+          .delete()
+          .eq("id", guiaIdGenerado);
+      }
+      throw errRelacion;
+    }
+
+    // Muestra un mensaje flotante de éxito al usuario si la función toast está disponible
+    if (typeof window.mostrarToast === "function") {
+      window.mostrarToast(
+        `¡Guía de ${tipoGuia} N° ${siguienteCorrelativo} guardada con éxito!`,
+        "success",
+      );
+    }
+    if (typeof listarEnviosDiarios === "function") {
+      await listarEnviosDiarios();
+    }
+
+    // ==========================================
+    // 🚀 GENERAR REPORTE PDF AUTOMÁTICAMENTE
+    // ==========================================
+    if (
+      typeof window.generarReporteGuiaAdmision === "function" &&
+      guiaIdGenerado
+    ) {
+      await window.generarReporteGuiaAdmision(guiaIdGenerado);
+    } else {
+      console.warn(
+        "La función generarReporteGuiaAdmision no está disponible globalmente.",
+      );
+    }
+
+    // ==========================================
+    // 🧹 LIMPIEZA DESPUÉS DE GUARDAR EXITOSAMENTE
+    // ==========================================
+
+    // Vacía por completo la lista temporal en memoria
+    listaEnviosTemporal = [];
+
+    // Limpia el valor del campo de la hoja de ruta
+    if (hojaRutaInput) hojaRutaInput.value = "";
+
+    // Restablece la etiqueta visual de la cantidad total a 0
+    const lblTotalCantidad = document.getElementById("lbl-total-cantidad");
+    if (lblTotalCantidad) lblTotalCantidad.textContent = "0";
+
+    // Restablece la etiqueta visual del peso total a 0.00
+    const lblTotalPeso = document.getElementById("lbl-total-peso");
+    if (lblTotalPeso) lblTotalPeso.textContent = "0.00";
+
+    // Restablece el formulario de adición de envíos
+    const formEnvio = document.getElementById("form-agregar-envio");
+    if (formEnvio) formEnvio.reset();
+
+    // Actualiza las tablas o recarga los listados de la interfaz según las funciones disponibles
+    if (typeof actualizarTablaTemporal === "function") {
+      actualizarTablaTemporal();
+    } else if (typeof renderizarTablaTemporal === "function") {
+      renderizarTablaTemporal();
+    }
+    // Cierra el modal de envíos de manera automática
+    if (typeof cerrarModalEnvio === "function") {
+      cerrarModalEnvio();
+    }
+    // 🔑 DISPARAR EL LISTADO AUTOMÁTICO PARA QUE SE REFRESQUE LA TABLA AL INSTANTE
+    if (typeof window.listarEnviosDiarios === "function") {
+      window.listarEnviosDiarios();
+    }
+  } catch (error) {
+    // Captura cualquier error ocurrido en el proceso, muestra la consola e informa al usuario mediante toast
+    console.error("Error en la transacción:", error);
+    if (typeof window.mostrarToast === "function") {
+      window.mostrarToast(
+        "Error al registrar. Se aplicó rollback y no se guardó nada: " +
+          error.message,
+        "error",
+      );
+    }
+  }
+}
+
+// Asignamos la función de manera global si es necesario
+window.guardarGuiaYDocumentosDefinitivo = guardarGuiaYDocumentosDefinitivo;
+
+async function cargarDepartamentos() {
+  // Captura el elemento select de departamentos en el DOM
+  const selectDep = document.getElementById("input-departamento");
+  // Captura el elemento select de provincias en el DOM
+  const selectProv = document.getElementById("input-provincia");
+  // Captura el elemento select de distritos en el DOM
+  const selectDist = document.getElementById("input-distrito");
+
+  // Si el selector de departamentos no existe físicamente, detiene la ejecución
+  if (!selectDep) return;
+
+  // 1. Resetea los campos dependientes de forma segura (ya sea con Tom Select o de forma nativa)
+  if (typeof selectProvInstance !== "undefined") {
+    selectProvInstance.clear();
+    selectProvInstance.clearOptions();
+    selectProvInstance.disable();
+  } else if (selectProv) {
+    selectProv.innerHTML = '<option value="">Seleccione...</option>';
+    selectProv.disabled = true;
+  }
+
+  if (typeof selectDistInstance !== "undefined") {
+    selectDistInstance.clear();
+    selectDistInstance.clearOptions();
+    selectDistInstance.disable();
+  } else if (selectDist) {
+    selectDist.innerHTML = '<option value="">Seleccione...</option>';
+    selectDist.disabled = true;
+  }
+
+  try {
+    // 2. Realiza la llamada a la función RPC de Supabase para obtener los departamentos
+    const { data, error } =
+      await window.supabaseClient.rpc("get_departamentos");
+
+    // Si Supabase devuelve un error en la ejecución RPC, lanza una excepción
+    if (error) throw new Error(error.message);
+
+    // 3. Filtra la data obtenida para asegurar que sean elementos únicos utilizando un Set
+    const departamentosUnicos = [...new Set(data)];
+
+    // 4. Llena el select evaluando si utiliza Tom Select o si emplea el respaldo HTML nativo
+    if (typeof selectDepInstance !== "undefined") {
+      selectDepInstance.clearOptions();
+      departamentosUnicos.forEach((dep) => {
+        // Asegura que el texto y el valor estén siempre en mayúsculas y limpios de espacios
+        const depMayus = String(dep).trim().toUpperCase();
+        selectDepInstance.addOption({ value: depMayus, text: depMayus });
+      });
+      selectDepInstance.refreshOptions();
+    } else {
+      // Respaldo nativo de HTML por si no está activa la librería Tom Select
+      let html = '<option value="">Seleccione...</option>';
+      departamentosUnicos.forEach((dep) => {
+        const depMayus = String(dep).trim().toUpperCase();
+        html += `<option value="${depMayus}">${depMayus}</option>`;
+      });
+      selectDep.innerHTML = html;
+    }
+  } catch (err) {
+    // Captura y muestra en consola cualquier error ocurrido al cargar los departamentos
+    console.error("Error al cargar departamentos:", err);
+  }
+}
+
+async function cargarProvincias() {
+  // Captura los elementos select del formulario de ubicación
+  const selectDep = document.getElementById("input-departamento");
+  const selectProv = document.getElementById("input-provincia");
+  const selectDist = document.getElementById("input-distrito");
+
+  // Obtiene el valor actual del departamento seleccionado en el DOM
+  const departamentoSeleccionado = selectDep.value;
+
+  // Restablece y deshabilita el selector de provincias preventivamente
+  selectProv.innerHTML = '<option value="">Seleccione...</option>';
+  selectProv.disabled = true;
+  // Restablece y deshabilita el selector de distritos preventivamente
+  selectDist.innerHTML = '<option value="">Seleccione...</option>';
+  selectDist.disabled = true;
+
+  // Si no hay ningún departamento seleccionado, interrumpe el proceso de inmediato
+  if (!departamentoSeleccionado) return;
+
+  try {
+    // Consulta a la tabla 'ubigeo' de Supabase filtrando estrictamente por el departamento elegido
+    const { data, error } = await window.supabaseClient
+      .from("ubigeo")
+      .select("provincia")
+      .eq("departamento", departamentoSeleccionado)
+      .order("provincia", { ascending: true });
+
+    // Si ocurre un error en la consulta a la base de datos, lanza una excepción
+    if (error) throw new Error(error.message);
+
+    // Filtra el resultado para extraer una lista única de provincias
+    const provinciasUnicas = [...new Set(data.map((item) => item.provincia))];
+
+    // Construye las opciones en formato HTML para el select nativo de provincias
+    let html = '<option value="">Seleccione...</option>';
+    provinciasUnicas.forEach((prov) => {
+      html += `<option value="${prov}">${prov}</option>`;
+    });
+    selectProv.innerHTML = html;
+    selectProv.disabled = false; // Habilita el selector de provincias para el usuario
+  } catch (err) {
+    // Muestra en consola un mensaje de error si la carga de provincias falla
+    console.error("Error al cargar provincias:", err);
+  }
+}
+
+async function cargarDistritos() {
+  // Captura los tres elementos select de la jerarquía geográfica
+  const selectDep = document.getElementById("input-departamento");
+  const selectProv = document.getElementById("input-provincia");
+  const selectDist = document.getElementById("input-distrito");
+
+  // Obtiene los valores seleccionados tanto de departamento como de provincia
+  const departamentoSeleccionado = selectDep.value;
+  const provinciaSeleccionada = selectProv.value;
+
+  // Restablece y deshabilita el selector de distritos preventivamente
+  selectDist.innerHTML = '<option value="">Seleccione...</option>';
+  selectDist.disabled = true;
+
+  // Si no hay ninguna provincia seleccionada, detiene la ejecución
+  if (!provinciaSeleccionada) return;
+
+  try {
+    // Trae tanto el ID como el nombre del distrito filtrando por depto y provincia en Supabase
+    const { data, error } = await window.supabaseClient
+      .from("ubigeo")
+      .select("id, distrito")
+      .eq("departamento", departamentoSeleccionado)
+      .eq("provincia", provinciaSeleccionada)
+      .order("distrito", { ascending: true });
+
+    // Si ocurre un error en la consulta, lanza una excepción
+    if (error) throw new Error(error.message);
+
+    let html = '<option value="">Seleccione...</option>';
+    data.forEach((item) => {
+      // ⭐ AQUÍ ESTÁ LA CLAVE: El value del option es el ID numérico real (ej. 45) y lo visible es el nombre del distrito
+      html += `<option value="${item.id}">${item.distrito}</option>`;
+    });
+    selectDist.innerHTML = html;
+    selectDist.disabled = false; // Habilita el selector de distritos para el usuario
+  } catch (err) {
+    // Muestra errores en consola si falla la consulta de distritos
+    console.error("Error al cargar distritos:", err);
+  }
+}
+
+window.cargarTiposDeServicio = async function () {
+  // Busca elementos con CUALQUIERA de las dos clases
+  const selects = document.querySelectorAll(
+    ".select-tipo-servicio, .select-tipo-servicio-update",
+  );
+
+  if (selects.length === 0) return;
+
+  try {
+    const { data: servicios, error } = await window.supabaseClient
+      .from("tipo_servicio")
+      .select("*");
+
+    if (error) throw new Error(error.message);
+
+    let opcionesHtml = '<option value="">Seleccione...</option>';
+
+    if (servicios && servicios.length > 0) {
+      servicios.forEach((servicio) => {
+        const idServicio = servicio.id;
+        const codigoServicio = (servicio.codigo || "").toUpperCase();
+
+        if (idServicio && codigoServicio) {
+          opcionesHtml += `<option value="${idServicio}">${codigoServicio}</option>`;
+        }
+      });
+    }
+
+    selects.forEach((select) => {
+      select.innerHTML = opcionesHtml;
+      select.disabled = false;
+    });
+
+    console.log("✅ Tipos de servicio cargados correctamente.");
+  } catch (error) {
+    console.error("❌ Error al cargar tipos de servicio:", error);
+  }
+};
+
+window.listarEnviosDiarios = async function () {
+  console.log("🔄 Ejecutando listarEnviosDiarios...");
+
+  const contenedor = document.getElementById("wrapper-gridjs-listado");
+  if (!contenedor) {
+    return;
+  }
+
+  try {
+    // 🔍 DETECTOR AUTOMÁTICO DE SUPABASE
+    const clienteSupabase =
+      window.supabaseClient ||
+      window.supabase ||
+      (typeof supabase !== "undefined" ? supabase : null);
+
+    if (!clienteSupabase) {
+      console.error(
+        "❌ Error crítico: No se encontró ninguna instancia de Supabase en el scope global.",
+      );
+      return;
+    }
+
+    // 1. Obtener la sucursal del usuario logueado
+    const sesionUsuario = JSON.parse(
+      sessionStorage.getItem("sesion_usuario") || "{}",
+    );
+    const sucursalIdLogueada = sesionUsuario.sucursal?.id || null;
+
+    console.log("🏢 Sucursal ID:", sucursalIdLogueada);
+
+    if (!sucursalIdLogueada) {
+      console.warn(
+        "⚠️ No se encontró el ID de la sucursal en el almacenamiento de la sesión.",
+      );
+      return;
+    }
+
+    // 2. OBTENER FECHA DEL EQUIPO (YYYY-MM-DD)
+    const fechaEquipo = new Date();
+    const anio = fechaEquipo.getFullYear();
+    const mes = String(fechaEquipo.getMonth() + 1).padStart(2, "0");
+    const dia = String(fechaEquipo.getDate()).padStart(2, "0");
+    const fechaEquipoStr = `${anio}-${mes}-${dia}`;
+    console.log("💻 Fecha del equipo:", fechaEquipoStr);
+
+    // 3. CONSULTAR LOS ENVÍOS DE LA SUCURSAL DESDE LA VISTA
+    const { data, error } = await clienteSupabase
+      .from("vista_envios_diarios")
+      .select("*")
+      .eq("sucursal_id", sucursalIdLogueada);
+
+    if (error) {
+      throw new Error(error.message);
+    }
+
+    // 4. COMPARAR LA FECHA DE LA VISTA CON LA DEL EQUIPO
+    const datosFiltrados = (data || []).filter((item) => {
+      if (!item.fecha_ingreso) return false;
+
+      const fechaVista = new Date(item.fecha_ingreso);
+      const anioVista = fechaVista.getFullYear();
+      const mesVista = String(fechaVista.getMonth() + 1).padStart(2, "0");
+      const diaVista = String(fechaVista.getDate()).padStart(2, "0");
+      const fechaVistaStr = `${anioVista}-${mesVista}-${diaVista}`;
+
+      return fechaVistaStr === fechaEquipoStr;
+    });
+
+    // 5. ORDENAR LOS DATOS: Primero por Servicio (alfabéticamente) y luego por N° de Orden (1, 2, 3...)
+    datosFiltrados.sort((a, b) => {
+      const servicioA = a.codigo || a.tipo_servicio_codigo || "";
+      const servicioB = b.codigo || b.tipo_servicio_codigo || "";
+
+      if (servicioA !== servicioB) {
+        return servicioA.localeCompare(servicioB);
+      }
+
+      return (parseInt(a.orden) || 0) - (parseInt(b.orden) || 0);
+    });
+
+    // 6. PREPARAR DATOS PARA GRID.JS
+    const filasTabla = datosFiltrados.map((item) => [
+      item.codigo || item.tipo_servicio_codigo || "N/A", // 1. Servicio
+      item.orden || "N/A", // 2. N° Orden
+      item.doc_emitido || "", // 3. N° Documento
+      item.destinatario || "", // 4. Destinatario
+      item.direccion || "", // 5. Dirección
+      item.departamento || "", // 6. Departamento
+      item.provincia || "", // 7. Provincia
+      item.distrito || "", // 8. Distrito
+      item.peso ? `${(item.peso * 1000).toFixed(0)} g` : "0 g", // 9. Peso
+    ]);
+
+    // 7. SI YA EXISTE UNA INSTANCIA PREVIA, ACTUALIZAMOS CONFIGURACIÓN (Evita recrear el DOM innecesariamente)
+    if (
+      typeof gridInstanceListadoDiario !== "undefined" &&
+      gridInstanceListadoDiario
+    ) {
+      gridInstanceListadoDiario
+        .updateConfig({ data: filasTabla })
+        .forceRender();
+      return;
+    }
+
+    // 8. CREAR GRID.JS CON EL MISMO ESTILO Y SCROLL DE TU REFERENCIA
+    gridInstanceListadoDiario = new gridjs.Grid({
+      columns: [
+        { name: "Servicio", width: "10%" },
+        { name: "N° Orden", width: "80px" },
+        { name: "N° Documento", width: "12%" },
+        { name: "Destinatario", width: "15%" },
+        { name: "Dirección", width: "15%" },
+        { name: "Departamento", width: "10%" },
+        { name: "Provincia", width: "10%" },
+        { name: "Distrito", width: "10%" },
+        { name: "Peso", width: "8%" },
+      ],
+      data: filasTabla,
+      search: true,
+      sort: true,
+      pagination: false, // Sin paginación
+      style: {
+        table: {
+          "font-size": "11px",
+          width: "100%",
+          "max-height": "400px", // 👈 Aquí se activa el scroll vertical idéntico a tu referencia
+          "overflow-y": "auto",
+        },
+        th: {
+          "background-color": "#f8fafc",
+          color: "#475569",
+          "font-weight": "600",
+          padding: "6px 8px",
+          position: "sticky",
+          top: "0",
+          "z-index": "10",
+        },
+        td: {
+          padding: "5px 8px",
+          color: "#334155",
+        },
+      },
+      language: {
+        noRecordsFound:
+          "No hay envíos registrados con la fecha de hoy en esta sucursal.",
+      },
+    }).render(contenedor);
+  } catch (error) {
+    console.error("❌ Error al cargar los envíos diarios:", error);
+  }
+};
+
+window.generarCodigosBarras = async function () {
+  console.log(
+    "⚡ [Inicio] Generando códigos de barras con correlativo de la guía...",
+  );
+
+  try {
+    const clienteSupabase =
+      window.supabaseClient ||
+      window.supabase ||
+      (typeof supabase !== "undefined" ? supabase : null);
+
+    if (!clienteSupabase) {
+      window.mostrarToast("No se encontró la instancia de Supabase.", "error");
+      return;
+    }
+
+    const sesionUsuario = JSON.parse(
+      sessionStorage.getItem("sesion_usuario") || "{}",
+    );
+    const sucursalId = sesionUsuario.sucursal?.id || null;
+    const prefijoSucursal = sesionUsuario.sucursal?.iniciales || "";
+
+    if (!sucursalId || !prefijoSucursal) {
+      window.mostrarToast(
+        "Faltan datos de la sucursal en la sesión.",
+        "warning",
+      );
+      return;
+    }
+
+    const fechaHoy = new Date().toISOString().split("T")[0];
+
+    const { data: envios, error: errorVista } = await clienteSupabase
+      .from("vista_envios_diarios")
+      .select("*")
+      .eq("sucursal_id", sucursalId);
+
+    if (errorVista)
+      throw new Error("Error al consultar la vista: " + errorVista.message);
+
+    const enviosHoy = (envios || []).filter(
+      (item) => item.fecha_ingreso && item.fecha_ingreso.startsWith(fechaHoy),
+    );
+
+    if (enviosHoy.length === 0) {
+      window.mostrarToast(
+        "No hay registros de envíos para el día de hoy.",
+        "warning",
+      );
+      return;
+    }
+
+    let actualizadosExitosos = 0;
+    let yaTenianCodigo = 0;
+    const operacionesFallidas = [];
+
+    for (const item of enviosHoy) {
+      const idDocumento = item.id_documento;
+      if (!idDocumento) continue;
+      const { data: docActual, error: errorDoc } = await clienteSupabase
+        .from("documento")
+        .select("codigo_barras")
+        .eq("id", idDocumento)
+        .single();
+
+      if (errorDoc) continue;
+
+      if (
+        docActual &&
+        docActual.codigo_barras &&
+        docActual.codigo_barras.trim() !== ""
+      ) {
+        yaTenianCodigo++;
+        continue; // Si ya tiene, pasa al siguiente
+      }
+
+      // 2. 🔍 BUSCAR EL CORRELATIVO EN LA TABLA GUÍA (A través de guia_documento o relación)
+      // Aquí consultamos la tabla intermedia 'guia_documento' unida a 'guia' para obtener el correlativo
+      const { data: guiaAsociada, error: errorGuia } = await clienteSupabase
+        .from("guia_documento")
+        .select(
+          `
+          guia:guia_id (
+            correlativo
+          )
+        `,
+        )
+        .eq("documento_id", idDocumento)
+        .maybeSingle();
+
+      // Extraemos el correlativo de la relación obtenida
+      const numeroCorrelativoGuia =
+        guiaAsociada?.guia?.correlativo || item.correlativo || "0";
+
+      // 3. ARMADO DE LAS PARTES DEL CÓDIGO DE BARRAS
+      const sucPadded = String(prefijoSucursal)
+        .toUpperCase()
+        .slice(0, 3)
+        .padEnd(3, "X");
+
+      // Guía: Exactamente 4 dígitos (tomando el correlativo real encontrado)
+      const guiaPadded = String(numeroCorrelativoGuia)
+        .replace(/\D/g, "")
+        .slice(-4)
+        .padStart(4, "0");
+
+      const ordenPadded = String(item.orden || 1).padStart(3, "0");
+
+      const tipoPadded = String(item.tipo_servicio_codigo || "SEL")
+        .toUpperCase()
+        .slice(0, 3)
+        .padEnd(3, "X");
+
+      const codigoBarras13 = `${sucPadded}${guiaPadded}${ordenPadded}${tipoPadded}`;
+
+      // 4. ACTUALIZAR EL DOCUMENTO
+      const { data: updateData, error: errorUpdate } = await clienteSupabase
+        .from("documento")
+        .update({ codigo_barras: codigoBarras13 })
+        .eq("id", idDocumento)
+        .select();
+
+      if (errorUpdate || !updateData || updateData.length === 0) {
+        operacionesFallidas.push({
+          id: idDocumento,
+          error: errorUpdate?.message || "No se pudo actualizar.",
+        });
+        break;
+      } else {
+        actualizadosExitosos++;
+      }
+    }
+
+    if (operacionesFallidas.length > 0) {
+      window.mostrarToast(
+        `Proceso interrumpido: ${operacionesFallidas[0].error}`,
+        "error",
+      );
+      return;
+    }
+
+    if (actualizadosExitosos === 0 && yaTenianCodigo > 0) {
+      window.mostrarToast(
+        "Los envíos de hoy ya cuentan con códigos de barras generados.",
+        "warning",
+      );
+    } else if (actualizadosExitosos > 0) {
+      window.mostrarToast(
+        `¡Códigos generados con éxito para ${actualizadosExitosos} nuevos registros!`,
+        "success",
+      );
+    } else {
+      window.mostrarToast("No hay registros nuevos pendientes.", "info");
+    }
+
+    if (typeof window.listarEnviosDiarios === "function") {
+      window.listarEnviosDiarios();
+    }
+  } catch (err) {
+    console.error("❌ Error:", err);
+    window.mostrarToast(
+      " Ocurrió un error inesperado: " + err.message,
+      "error",
+    );
+  }
+};
+
+window.exportarYActualizarGuiaSim = async function (
+  tipoServicioFiltro,
+  numeroGuiaSimInput,
+) {
+  console.log(
+    "⚡ [Inicio] Procesando exportación con formato de 3 decimales fijos en PESO...",
+  );
+
+  try {
+    const clienteSupabase =
+      window.supabaseClient ||
+      window.supabase ||
+      (typeof supabase !== "undefined" ? supabase : null);
+
+    if (!clienteSupabase) {
+      alert("⚠️ No se encontró la instancia de Supabase.");
+      return;
+    }
+
+    const sesionUsuario = JSON.parse(
+      sessionStorage.getItem("sesion_usuario") || "{}",
+    );
+    const sucursalId = sesionUsuario.sucursal?.id || null;
+    const prefijoSucursal = sesionUsuario.sucursal?.iniciales || "";
+
+    if (!sucursalId) {
+      alert("⚠️ No se encontró la sucursal activa en la sesión.");
+      return;
+    }
+    if (!prefijoSucursal) {
+      alert("⚠️ No se encontraron las iniciales de la sucursal en la sesión.");
+      return;
+    }
+
+    // 1. Capturar automáticamente la Guía SIM si viene vacía
+    if (!numeroGuiaSimInput) {
+      const inputElem = document.getElementById("input-sim");
+      numeroGuiaSimInput = inputElem ? inputElem.value.trim() : "";
+    }
+
+    if (!numeroGuiaSimInput) {
+      const msg =
+        "⚠️ Por favor, ingresa el número de Guía SIM en la caja de texto.";
+      if (typeof window.mostrarToast === "function") {
+        window.mostrarToast(msg, "warning");
+      } else {
+        alert(msg);
+      }
+      return;
+    }
+
+    // 2. Capturar automáticamente el Tipo de Servicio usando el TEXTO visible (ej. "SEN")
+    if (!tipoServicioFiltro) {
+      const selectElem = document.getElementById(
+        "input-tipo-servicio-exportar",
+      );
+      if (selectElem && selectElem.selectedIndex >= 0) {
+        tipoServicioFiltro =
+          selectElem.options[selectElem.selectedIndex].text.trim();
+      }
+    }
+
+    if (!tipoServicioFiltro || tipoServicioFiltro === "Seleccione...") {
+      const msg = "⚠️ Por favor, selecciona el tipo de servicio.";
+      if (typeof window.mostrarToast === "function") {
+        window.mostrarToast(msg, "warning");
+      } else {
+        alert(msg);
+      }
+      return;
+    }
+
+    const fechaHoy = new Date().toISOString().split("T")[0];
+
+    // 3. Consultar la vista de envíos diarios
+    const { data: envios, error: errorVista } = await clienteSupabase
+      .from("vista_envios_diarios")
+      .select("*")
+      .eq("sucursal_id", sucursalId);
+
+    if (errorVista)
+      throw new Error("Error al consultar la vista: " + errorVista.message);
+
+    const enviosFiltrados = (envios || []).filter((item) => {
+      const esHoy =
+        item.fecha_ingreso && item.fecha_ingreso.startsWith(fechaHoy);
+      const coincideServicio =
+        String(item.tipo_servicio_codigo).toUpperCase() ===
+        String(tipoServicioFiltro).toUpperCase();
+      return esHoy && coincideServicio;
+    });
+
+    if (enviosFiltrados.length === 0) {
+      const msgNoReg = `⚠️ No hay registros para el tipo de servicio ${tipoServicioFiltro} el día de hoy.`;
+      if (typeof window.mostrarToast === "function") {
+        window.mostrarToast(msgNoReg, "warning");
+      } else {
+        alert(msgNoReg);
+      }
+      return;
+    }
+
+    // 4. Verificación previa de duplicados
+    const sucPaddedCheck = String(prefijoSucursal)
+      .toUpperCase()
+      .slice(0, 3)
+      .padEnd(3, "X");
+    const guiaSimPaddedCheck = String(numeroGuiaSimInput)
+      .slice(-5)
+      .padStart(5, "0");
+    const primerOrdenCheck = String(enviosFiltrados[0].orden || 1).padStart(
+      5,
+      "0",
+    );
+    const codigoPruebaCheck = `${sucPaddedCheck}${guiaSimPaddedCheck}${primerOrdenCheck}`;
+
+    const { data: existeCodigo } = await clienteSupabase
+      .from("documento")
+      .select("id")
+      .eq("codigo_barras", codigoPruebaCheck)
+      .maybeSingle();
+
+    if (existeCodigo) {
+      const msgDuplicado = `⚠️ La Guía SIM "${numeroGuiaSimInput}" (o su código de barras) ya existe. Por favor, ingresa otro número.`;
+      if (typeof window.mostrarToast === "function") {
+        window.mostrarToast(msgDuplicado, "error");
+      } else {
+        alert(msgDuplicado);
+      }
+      return;
+    }
+
+    let actualizadosExitosos = 0;
+    const operacionesFallidas = [];
+    const datosParaExcel = [];
+
+    for (const [index, item] of enviosFiltrados.entries()) {
+      const sucPadded = String(prefijoSucursal)
+        .toUpperCase()
+        .slice(0, 3)
+        .padEnd(3, "X");
+      const guiaSimPadded = String(numeroGuiaSimInput)
+        .slice(-5)
+        .padStart(5, "0");
+
+      const ordenValor = item.orden || index + 1;
+      const ordenPadded = String(ordenValor).padStart(5, "0");
+
+      const codigoBarras14 = `${sucPadded}${guiaSimPadded}${ordenPadded}`;
+      const idDocumento = item.id_documento;
+
+      if (!idDocumento) {
+        throw new Error(
+          "El registro actual no posee un ID de documento válido.",
+        );
+      }
+
+      // Doble update: codigo_barras y guia_sim
+      const { data: updateData, error: errorUpdate } = await clienteSupabase
+        .from("documento")
+        .update({
+          codigo_barras: codigoBarras14,
+          guia_sim: numeroGuiaSimInput,
+        })
+        .eq("id", idDocumento)
+        .select();
+
+      if (errorUpdate) {
+        operacionesFallidas.push({
+          id: idDocumento,
+          error: errorUpdate.message,
+        });
+        break;
+      } else if (!updateData || updateData.length === 0) {
+        operacionesFallidas.push({
+          id: idDocumento,
+          error: "No se encontró el registro o RLS bloqueó el update.",
+        });
+        break;
+      } else {
+        actualizadosExitosos++;
+      }
+
+      // Formatear el peso asegurando 3 decimales exactos (ej. 0.04 -> "0.040")
+      let pesoFormateado = "";
+      if (item.peso !== null && item.peso !== undefined && item.peso !== "") {
+        const numeroPeso = parseFloat(item.peso);
+        pesoFormateado = isNaN(numeroPeso) ? item.peso : numeroPeso.toFixed(3);
+      }
+
+      datosParaExcel.push({
+        ORDEN: ordenPadded,
+        DOCUMENTO: item.doc_emitido || "",
+        DESTINATARIO: item.destinatario || "",
+        DIRECCION: item.direccion || "",
+        DEPARTAMENTO: item.departamento || "",
+        PROVINCIA: item.provincia || "",
+        DISTRITO: item.distrito || "",
+        PESO: pesoFormateado,
+      });
+    }
+
+    if (operacionesFallidas.length > 0) {
+      const msgError = `⚠️ La Guía SIM ingresada ya existe o está en uso. Por favor, verifique el número.`;
+      if (typeof window.mostrarToast === "function") {
+        window.mostrarToast(msgError, "error");
+      } else {
+        alert("❌ " + msgError);
+      }
+      return;
+    }
+
+    // Descarga del Excel sin bordes y con formato forzado de 3 decimales
+    descargarExcelSinBordes(
+      datosParaExcel,
+      `Envios_${tipoServicioFiltro}_${fechaHoy}.xls`,
+    );
+
+    if (typeof window.mostrarToast === "function") {
+      window.mostrarToast("¡Proceso completado con éxito!", "success");
+    } else {
+      alert(
+        `✅ ¡Se actualizaron y exportaron ${actualizadosExitosos} registros con éxito!`,
+      );
+    }
+
+    if (typeof window.listarEnviosDiarios === "function") {
+      window.listarEnviosDiarios();
+    }
+  } catch (err) {
+    console.error("❌ Error en la exportación:", err);
+    if (typeof window.mostrarToast === "function") {
+      window.mostrarToast("Error en el proceso: " + err.message, "error");
+    } else {
+      alert("❌ Ocurrió un error: " + err.message);
+    }
+  }
+};
+
+function descargarExcelSinBordes(data, nombreArchivo) {
+  let tablaHtml = "<table border='0'>\r";
+  tablaHtml += "<tr>";
+  Object.keys(data[0]).forEach((key) => {
+    tablaHtml += `<th>${key}</th>`;
+  });
+  tablaHtml += "</tr>\r";
+
+  data.forEach((fila) => {
+    tablaHtml += "<tr>";
+    Object.keys(fila).forEach((key) => {
+      let val = fila[key];
+      let valStr = val !== null && val !== undefined ? val : "";
+
+      // Si la columna es PESO, le inyectamos la propiedad CSS mso-number-format para forzar los 3 decimales en Excel
+      if (key === "PESO" && !isNaN(val) && valStr !== "") {
+        tablaHtml += `<td style='mso-number-format:"0\\.000";'>${valStr}</td>`;
+      } else {
+        tablaHtml += `<td>${valStr}</td>`;
+      }
+    });
+    tablaHtml += "</tr>\r";
+  });
+  tablaHtml += "</table>";
+
+  const blob = new Blob(["\ufeff" + tablaHtml], {
+    type: "application/vnd.ms-excel;charset=utf-8;",
+  });
+
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = nombreArchivo;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}

@@ -1,0 +1,29 @@
+<!-- ========================================== -->
+<!-- MÓDULO DE GUÍA -->
+<!-- ========================================== -->
+<div class="bg-white p-3 rounded-xl shadow-sm border border-slate-200 mb-4 flex items-center justify-between gap-3">
+  <!-- Título y subtítulo -->
+  <div class="flex-shrink-0">
+    <h2 class="text-base font-bold text-slate-800">Módulo de Guía</h2>
+    <p class="text-[11px] text-slate-500">Gestión de Admisión y devolución de guías</p>
+  </div>
+
+  <!-- CONTENEDOR ÚNICO INTEGRADO -->
+  <div class="flex items-center gap-2 bg-slate-50 p-1.5 rounded-lg border border-slate-200">
+    <!-- Radio: Guía Admisión (Marcado por defecto) -->
+    <label class="flex items-center gap-1.5 cursor-pointer text-xs font-semibold text-slate-700 px-2 py-1 rounded hover:bg-slate-200/60 transition">
+      <input type="radio" name="modo-guia" id="radio-admision" value="admision" checked class="text-blue-600 focus:ring-blue-500">
+      <span>Guía Admisión</span>
+    </label>
+
+    <!-- Radio: Devolución -->
+    <label class="flex items-center gap-1.5 cursor-pointer text-xs font-semibold text-slate-700 px-2 py-1 rounded hover:bg-slate-200/60 transition">
+      <input type="radio" name="modo-guia" id="radio-devolucion" value="devolucion" class="text-blue-600 focus:ring-blue-500">
+      <span>Devolución</span>
+    </label>
+  </div>
+</div>
+
+<div class="border border-slate-200 rounded-lg overflow-hidden bg-white mt-2 min-h-[200px]">
+  <div id="wrapper-grid-table-guias" class="text-xs"></div>
+</div>

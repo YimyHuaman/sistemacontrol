@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Control de Envíos - Contraloría</title>
+
+  <!-- Tailwind CSS (Local) -->
+  <script src="vendor/tailwindcss.js"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['"Aptos Narrow"', '"Arial Narrow"', 'sans-serif'],
+          },
+        }
+      }
+    }
+  </script>
+
+  <!-- Lucide Icons (Local) -->
+  <script src="vendor/lucide.js"></script>
+
+  <!-- Grid.js CSS (Local) -->
+  <link href="vendor/gridjs.mermaid.min.css" rel="stylesheet" />
+  <!-- Grid.js JavaScript (Local) -->
+  <script src="vendor/gridjs.umd.js"></script>
+
+  <!-- Tom Select CSS (Local) -->
+  <link href="vendor/tom-select.bootstrap5.min.css" rel="stylesheet">
+  <!-- Tom Select JavaScript (Local) -->
+  <script src="vendor/tom-select.complete.min.js"></script>
+
+  <!-- Estilos globales -->
+  <link rel="stylesheet" href="style.css">
+</head>
+
+<body class="bg-slate-100 font-sans text-slate-800 antialiased h-screen w-screen overflow-hidden">
+
+  <!-- Contenedor Maestro SPA -->
+  <main class="w-full h-full relative">
+    <!-- Vista del Login (Ocupa toda la pantalla por defecto) -->
+    <div id="view-login" class="absolute inset-0 w-full h-full flex items-center justify-center"></div>
+
+    <!-- Vista del Dashboard (Inicia oculta con 'hidden', ocupa toda la pantalla al mostrarse) -->
+    <div id="view-dashboard" class="hidden absolute inset-0 w-full h-full"></div>
+  </main>
+
+  <!-- 1. Supabase JS Local (OBLIGATORIO antes de cualquier modelo) -->
+  <script src="vendor/supabase.js"></script>
+  <!-- 1. Primero se cargan los scripts de pdfmake desde la carpeta vendor -->
+  <script src="vendor/pdfmake.min.js"></script>
+  <script src="vendor/vfs_fonts.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
+
+  <!-- 2. Modelo (Crea la instancia de Supabase y AuthModel) -->
+  <script src="model/authModel.js"></script>
+
+  <!-- 3. Controlador maestro global (Define el objeto SPA y loadViews) -->
+  <script src="script.js"></script>
+
+  <!-- 4. Controladores específicos -->
+  <script src="controller/login.js"></script>
+  <script src="controller/dashboard.js"></script>
+  <script src="controller/admission.js"></script>
+  <script src="controller/document.js"></script>
+  <script src="controller/guia.js"></script>
+  <script src="reports/guiaAdmisionPdf.js"></script>
+  <script src="reports/guiaDevolucionPdf.js"></script>
+  <script src="reports/codigoBarras.js"></script>
+  <script src="controller/consolidado.js"></script>
+  <script src="vendor/xlsx.full.min.js"></script>
+</body>
+
+</html>

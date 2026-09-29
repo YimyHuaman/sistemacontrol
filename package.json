@@ -1,0 +1,21 @@
+{
+  "name": "control-contraloria",
+  "version": "1.0.0",
+  "main": "script.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@supabase/supabase-js": "^2.116.0",
+    "gridjs": "^6.2.0",
+    "lucide": "^1.46.0",
+    "pdfmake": "^0.3.11",
+    "tailwindcss": "^4.3.3",
+    "tom-select": "^2.6.2",
+    "xlsx": "^0.18.5"
+  },
+  "description": ""
+}

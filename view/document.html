@@ -1,0 +1,251 @@
+<!-- ========================================== -->
+<!-- 1. MÓDULO PRINCIPAL -->
+<!-- ========================================== -->
+<div class="bg-white p-3 rounded-xl shadow-sm border border-slate-200 mb-4 flex items-center justify-between gap-3">
+  <!-- Título y subtítulo -->
+  <div class="flex-shrink-0">
+    <h2 class="text-base font-bold text-slate-800">Módulo de Descargo de Envíos</h2>
+    <p class="text-[11px] text-slate-500">Gestión de descargo y devolución</p>
+  </div>
+
+  <!-- CONTENEDOR ÚNICO INTEGRADO -->
+  <div class="flex items-center gap-2 bg-slate-50 p-1.5 rounded-lg border border-slate-200">
+    <!-- Radio: Pendientes (Sin onchange en línea) -->
+    <label
+      class="flex items-center gap-1.5 cursor-pointer text-xs font-semibold text-slate-700 px-2 py-1 rounded hover:bg-slate-200/60 transition">
+      <input type="radio" name="modo_operacion" id="radio-pendientes" value="pendientes" checked
+        class="text-blue-600 focus:ring-blue-500">
+      <span>Pendientes</span>
+    </label>
+
+    <!-- Radio: Todos (Sin onchange en línea) -->
+    <label
+      class="flex items-center gap-1.5 cursor-pointer text-xs font-semibold text-slate-700 px-2 py-1 rounded hover:bg-slate-200/60 transition">
+      <input type="radio" name="modo_operacion" id="radio-todos" value="todos"
+        class="text-blue-600 focus:ring-blue-500">
+      <span>Todos</span>
+    </label>
+
+    <!-- Separador visual sutil -->
+    <div class="h-4 w-[1px] bg-slate-300 mx-0.5"></div>
+
+    <!-- Campos de fecha y botón (Sin onclick en línea) -->
+    <div class="flex items-center gap-1.5">
+      <span class="text-[11px] font-medium text-slate-500">De:</span>
+      <input type="date" id="fecha-desde" disabled
+        class="px-1.5 py-1 bg-white border border-slate-300 rounded text-[11px] text-slate-700 disabled:bg-slate-100 disabled:text-slate-400 disabled:cursor-not-allowed focus:outline-none focus:ring-1 focus:ring-blue-500">
+
+      <span class="text-[11px] font-medium text-slate-500">Hasta:</span>
+      <input type="date" id="fecha-hasta" disabled
+        class="px-1.5 py-1 bg-white border border-slate-300 rounded text-[11px] text-slate-700 disabled:bg-slate-100 disabled:text-slate-400 disabled:cursor-not-allowed focus:outline-none focus:ring-1 focus:ring-blue-500">
+
+      <button id="btn-buscar-fechas" disabled
+        class="px-2.5 py-1 bg-blue-600 text-white text-xs font-medium rounded hover:bg-blue-700 disabled:bg-slate-300 disabled:cursor-not-allowed transition flex items-center gap-1 shadow-sm">
+        <i data-lucide="search" class="w-3 h-3"></i> Buscar
+      </button>
+    </div>
+  </div>
+
+  <!-- Botones de Acción Principales -->
+  <div class="flex items-center gap-2 flex-shrink-0">
+    <button onclick="abrirModalDescargo()"
+      class="px-3 py-1.5 bg-blue-600 text-white font-medium text-xs rounded-lg hover:bg-blue-700 transition shadow-sm flex items-center gap-1.5">
+      <i data-lucide="clipboard-check" class="w-3.5 h-3.5"></i> Descargo
+    </button>
+
+    <button onclick="abrirModalDevolucion()"
+      class="px-3 py-1.5 bg-slate-800 text-white font-medium text-xs rounded-lg hover:bg-slate-900 transition shadow-sm flex items-center gap-1.5">
+      <i data-lucide="rotate-ccw" class="w-3.5 h-3.5"></i> Devolución
+    </button>
+  </div>
+</div>
+
+<div class="border border-slate-200 rounded-lg overflow-hidden bg-white mt-2 min-h-[200px]">
+  <div id="wrapper-grid-table-documentos" class="text-xs"></div>
+</div>
+
+
+<!-- ========================================== -->
+<!-- 2. MODAL DE DESCARGO -->
+<!-- ========================================== -->
+<div id="modal-descargo"
+  class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900 bg-opacity-50 hidden backdrop-blur-sm p-4">
+  <div class="bg-white rounded-2xl shadow-2xl w-full max-w-xl max-h-[90vh] overflow-y-auto transform transition-all">
+
+    <!-- Header del Modal (Estilo claro / blanquioso con texto oscuro) -->
+    <div class="bg-slate-100 border-b border-slate-200 px-5 py-3.5 flex justify-between items-center sticky top-0 z-10">
+      <h3 id="modalTitulo" class="font-bold text-sm tracking-wide text-slate-800">Descargo de Envíos</h3>
+      <button type="button" class="text-slate-400 hover:text-slate-700 text-lg font-bold transition"
+        onclick="cerrarModalDescargo()">
+        <i data-lucide="x" class="w-4 h-4"></i>
+      </button>
+    </div>
+
+    <!-- Cuerpo del Modal -->
+    <div class="p-4 space-y-3">
+      <!-- Código / Referencia y Botón Buscar -->
+      <div class="flex items-center gap-2">
+        <div
+          class="relative border border-slate-300 rounded-xl px-3 pt-2.5 pb-1.5 bg-white focus-within:border-blue-600 focus-within:ring-1 focus-within:ring-blue-600 flex-1 flex items-center">
+          <div class="w-full">
+            <label class="absolute -top-2.5 left-3 px-1 bg-white text-[10px] font-semibold text-slate-600">Código /
+              Referencia</label>
+            <input type="text" id="modalCodigoInput" placeholder="Digite código..."
+              class="w-full bg-white text-xs text-slate-800 py-0.5 focus:outline-none">
+          </div>
+          <i data-lucide="barcode" class="w-4 h-4 text-slate-400 ml-2 shrink-0"></i>
+        </div>
+
+        <button type="button" id="btnBuscarModal" onclick="window.buscarEnvioParaDescargo()"
+          class="px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium rounded-xl transition whitespace-nowrap shadow-sm flex items-center gap-1.5 shrink-0">
+          <i data-lucide="search" class="w-3.5 h-3.5"></i>
+          <span>Buscar</span>
+        </button>
+      </div>
+
+      <!-- Datos de Envío -->
+      <div class="bg-slate-50 p-3 rounded-xl border border-slate-200">
+        <label class="block text-[10px] font-semibold text-slate-500 uppercase mb-0.5">DATOS DE ENVÍO:</label>
+        <div id="modalDatosContenido" class="text-xs text-slate-700">
+          Cargando información del registro seleccionado...
+        </div>
+      </div>
+
+      <!-- Fila compartida: Fecha y Motivo -->
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+        <div
+          class="relative border border-slate-300 rounded-xl px-3 pt-2.5 pb-1.5 bg-white focus-within:border-blue-600 focus-within:ring-1 focus-within:ring-blue-600 flex items-center">
+          <div class="w-full">
+            <label class="absolute -top-2.5 left-3 px-1 bg-white text-[10px] font-semibold text-slate-600">Motivo de
+              Descargo</label>
+            <select id="input-motivo-descargo" required
+              class="w-full bg-white text-xs text-slate-800 py-0.5 appearance-none focus:outline-none">
+              <option value="">Seleccione...</option>
+            </select>
+          </div>
+          <i data-lucide="chevron-down" class="w-3.5 h-3.5 text-slate-400 ml-2 shrink-0 pointer-events-none"></i>
+        </div>
+        <div
+          class="relative border border-slate-300 rounded-xl px-3 pt-2.5 pb-1.5 bg-white focus-within:border-blue-600 focus-within:ring-1 focus-within:ring-blue-600 flex items-center">
+          <div class="w-full">
+            <label class="absolute -top-2.5 left-3 px-1 bg-white text-[10px] font-semibold text-slate-600">Fecha de
+             Motivo - Entrega / Notificacion</label>
+            <input type="date" id="input-fecha-descargo" required
+              class="w-full bg-white text-xs text-slate-800 py-0.5 focus:outline-none uppercase">
+          </div>
+          <i data-lucide="calendar" class="w-3.5 h-3.5 text-slate-400 ml-2 shrink-0 pointer-events-none"></i>
+        </div>
+
+
+      </div>
+    </div>
+
+    <!-- Pie del Modal -->
+    <div class="bg-slate-50 px-4 py-2.5 flex justify-end gap-2 border-t border-slate-200 sticky bottom-0">
+      <button type="button"
+        class="px-3.5 py-1.5 border border-slate-300 text-slate-700 rounded-xl text-xs font-medium hover:bg-slate-100 transition"
+        onclick="cerrarModalDescargo()">Cancelar</button>
+      <button type="button"
+        class="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-medium transition shadow-sm"
+        onclick="confirmarAccionModal()">Aceptar</button>
+    </div>
+
+  </div>
+</div>
+
+
+<!-- ========================================== -->
+<!-- 3. MODAL DE DEVOLUCIÓN (MÁS COMPACTO Y AJUSTADO) -->
+<!-- ========================================== -->
+<div id="modal-devolucion"
+  class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm hidden z-50 flex items-center justify-center p-3 overflow-y-auto">
+  <div
+    class="bg-white rounded-xl shadow-xl border border-slate-200 w-full max-w-2xl overflow-hidden animate-in fade-in zoom-in duration-200 my-auto">
+
+    <!-- Header del Modal -->
+    <div class="px-4 py-2.5 border-b border-slate-100 flex flex-wrap justify-between items-center bg-slate-50 gap-2">
+
+      <!-- Título y Subtítulo -->
+      <div>
+        <h3 class="font-bold text-xs text-slate-800 tracking-tight">Módulo de Devolución - Gestión de Guía y Envíos</h3>
+        <p class="text-[10px] text-slate-400 font-normal">Agregue los envíos al lote antes de realizar el devoluciòn
+          definitivo</p>
+      </div>
+
+      <!-- Controles Superiores: Tipo de Guía y Cantidad -->
+      <div class="flex items-center gap-2">
+
+        <!-- Tipo de Guía -->
+        <div class="relative w-28 border border-slate-300 rounded-lg px-2 pt-2.5 pb-0.5 bg-slate-100/60">
+          <label class="absolute -top-2 left-2 px-1 bg-slate-50 text-[9px] font-semibold text-slate-600">Tipo de
+            Guía</label>
+          <input type="text" id="modal-tipo-guia" value="DEVOLUCION" disabled
+            class="w-full bg-transparent text-[11px] font-bold text-slate-700 py-0.5 uppercase text-center focus:outline-none">
+        </div>
+
+        <!-- Cantidad -->
+        <div
+          class="relative w-24 border border-slate-300 rounded-lg px-2 pt-2.5 pb-0.5 bg-white focus-within:border-blue-600 focus-within:ring-1 focus-within:ring-blue-600">
+          <label class="absolute -top-2 left-2 px-1 bg-white text-[9px] font-semibold text-slate-600">Cantidad *</label>
+          <input type="number" id="modal-cantidad-devolucion" value="0" disabled
+            class="w-full bg-transparent text-[11px] font-bold text-slate-700 text-center focus:outline-none">
+        </div>
+
+      </div>
+
+    </div>
+
+    <!-- Cuerpo del Modal -->
+    <div class="p-4 space-y-3 flex-1 bg-white">
+
+      <!-- Contenedor Interno (Fila compacta con flex en lugar de grid ancho) -->
+      <div class="border border-slate-200/90 rounded-xl p-3 bg-white shadow-2xs flex flex-wrap items-center gap-2">
+
+        <!-- Código / Referencia (Ocupa el espacio restante de forma fluida) -->
+        <div
+          class="relative flex-1 min-w-[200px] border border-slate-200 rounded-lg px-2.5 pt-2.5 pb-1 bg-white focus-within:border-blue-600 focus-within:ring-1 focus-within:ring-blue-600 flex items-center">
+          <div class="w-full">
+            <label class="absolute -top-2 left-2.5 px-1 bg-white text-[9px] font-semibold text-slate-400">Código /
+              Referencia *</label>
+            <input type="text" id="input-codigo-barras" placeholder="Digite o escanee código..."
+              class="w-full bg-white text-[11px] text-slate-800 py-0.5 focus:outline-none">
+          </div>
+          <i data-lucide="barcode" class="w-3.5 h-3.5 text-slate-400 ml-2 shrink-0"></i>
+        </div>
+
+        <!-- Botón Agregar a la Lista (Tamaño ajustado al contenido) -->
+        <button type="button" onclick="procesarBusquedaYAgregar()"
+          class="px-3.5 py-2 bg-blue-600 hover:bg-blue-700 text-white text-[11px] font-medium rounded-lg transition shadow-2xs flex items-center gap-1.5 shrink-0">
+          <i data-lucide="plus-circle" class="w-3 h-3"></i>
+          <span>Agregar</span>
+        </button>
+
+      </div>
+
+      <!-- Tabla Interna con Scroll Vertical -->
+      <div class="border border-slate-200 rounded-lg overflow-hidden bg-white mt-2">
+        <div class="max-h-40 overflow-y-auto">
+          <div id="wrapper-gridjs-listado-devolucion" class="text-xs"></div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Pie del Modal -->
+    <div class="bg-white px-4 py-3 flex justify-between items-center border-t border-slate-100 sticky bottom-0">
+      <!-- Botón Cancelar -->
+      <button type="button"
+        class="px-3.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-[11px] font-medium transition shadow-2xs border border-slate-200"
+        onclick="cerrarModalDevolucion()">Cancelar</button>
+
+      <!-- Botón Guardar Definitivo -->
+      <button type="button"
+        class="px-4 py-1.5 bg-[#059669] hover:bg-emerald-700 text-white rounded-lg text-[11px] font-semibold transition shadow-sm flex items-center gap-1.5"
+        onclick="guardarDevolucionesTotales()">
+        <i data-lucide="file-check" class="w-3.5 h-3.5"></i>
+        <span>Guardar Guía y Envíos (Definitivo)</span>
+      </button>
+    </div>
+
+  </div>
+</div>

@@ -1,0 +1,54 @@
+<!-- ========================================== -->
+<!-- 1. MÓDULO PRINCIPAL DE CONSOLIDADO -->
+<!-- ========================================== -->
+<div
+  class="bg-white p-3 rounded-xl shadow-sm border border-slate-200 mb-4 flex items-center justify-between gap-3 flex-wrap">
+  <!-- Título y subtítulo -->
+  <div class="flex-shrink-0">
+    <h2 class="text-base font-bold text-slate-800">Módulo de Consolidado</h2>
+    <p class="text-[11px] text-slate-500">Gestión y consulta general de envíos</p>
+  </div>
+
+  <!-- CONTENEDOR DE FILTROS POR FECHAS Y ESTADOS -->
+  <div class="flex items-center gap-3 bg-slate-50 p-2 rounded-lg border border-slate-200 flex-wrap">
+
+    <!-- Contenedor dinámico de Checkboxes de Estados -->
+    <div class="flex items-center gap-2 border-r border-slate-300 pr-3">
+      <span class="text-[11px] font-medium text-slate-500">Estados:</span>
+      <div id="contenedor-checks-estados" class="flex items-center gap-2 flex-wrap">
+        <!-- Aquí se inyectarán los checkboxes automáticamente desde Supabase -->
+        <span class="text-[11px] text-slate-400 italic">Cargando estados...</span>
+      </div>
+    </div>
+
+    <!-- Campos de fecha (Facultativos / Opcionales) -->
+    <div class="flex items-center gap-1.5">
+      <span class="text-[11px] font-medium text-slate-500">Desde:</span>
+      <input type="date" id="fecha-desde"
+        class="px-1.5 py-1 bg-white border border-slate-300 rounded text-[11px] text-slate-700 focus:outline-none focus:ring-1 focus:ring-blue-500">
+
+      <span class="text-[11px] font-medium text-slate-500">Hasta:</span>
+      <input type="date" id="fecha-hasta"
+        class="px-1.5 py-1 bg-white border border-slate-300 rounded text-[11px] text-slate-700 focus:outline-none focus:ring-1 focus:ring-blue-500">
+
+      <!-- Botón de Búsqueda -->
+      <button id="btn-buscar-fechas"
+        class="px-2.5 py-1 bg-blue-600 text-white text-xs font-medium rounded hover:bg-blue-700 transition flex items-center gap-1 shadow-sm">
+        <i data-lucide="search" class="w-3 h-3"></i> Buscar
+      </button>
+    </div>
+  </div>
+
+  <!-- Botones de Acción Principales -->
+  <div class="flex items-center gap-2 flex-shrink-0">
+    <button id="btn-exportar-excel" onclick="window.exportarExcelDistribucion()"
+      class="px-3 py-1.5 bg-emerald-600 text-white font-medium text-xs rounded-lg hover:bg-emerald-700 transition shadow-sm flex items-center gap-1.5">
+      <i data-lucide="file-spreadsheet" class="w-3.5 h-3.5"></i> Exportar Excel
+    </button>
+  </div>
+</div>
+
+<!-- Contenedor de la Tabla o Grid de Resultados -->
+<div class="border border-slate-200 rounded-lg overflow-hidden bg-white mt-2 min-h-[200px]">
+  <div id="wrapper-grid-table-consolidado" class="text-xs"></div>
+</div>
