@@ -71,32 +71,55 @@ window.cambiarModoOperacion = function () {
   const inputSim = document.getElementById("input-sim");
   const btnExportar = document.getElementById("btn-exportar-excel");
 
-  if (radioBarras.checked) {
+  if (radioBarras && radioBarras.checked) {
     // --- ACTIVAR MODO BARRAS ---
-    btnGenerar.disabled = false;
-    btnGenerar.classList.remove("opacity-50", "cursor-not-allowed");
+    if (btnGenerar) {
+      btnGenerar.disabled = false;
+      btnGenerar.classList.remove("opacity-50", "cursor-not-allowed");
+    }
 
-    // Desactivar modo Excel
-    selectTipo.disabled = true;
-    inputSim.disabled = true;
-    btnExportar.disabled = true;
+    // Desactivar modo Excel y limpiar sus campos
+    if (selectTipo) {
+      selectTipo.value = "";
+      selectTipo.disabled = true;
+    }
+    if (inputSim) {
+      inputSim.value = "";
+      inputSim.disabled = true;
+    }
+    if (btnExportar) {
+      btnExportar.disabled = true;
+      btnExportar.classList.add("opacity-50", "cursor-not-allowed"); // Opcional por consistencia visual
+    }
 
     // Estilos visuales desactivados para Excel
-    fieldsetTipo.classList.add("opacity-60", "bg-slate-100");
-    fieldsetGuia.classList.add("opacity-60", "bg-slate-100");
-  } else if (radioExcel.checked) {
-    // --- ACTIVAR MODO EXCEL ---
-    btnGenerar.disabled = true;
-    btnGenerar.classList.add("opacity-50", "cursor-not-allowed");
+    if (fieldsetTipo) fieldsetTipo.classList.add("opacity-60", "bg-slate-100");
+    if (fieldsetGuia) fieldsetGuia.classList.add("opacity-60", "bg-slate-100");
 
-    // Activar modo Excel
-    selectTipo.disabled = false;
-    inputSim.disabled = false;
-    btnExportar.disabled = false;
+  } else if (radioExcel && radioExcel.checked) {
+    // --- ACTIVAR MODO EXCEL ---
+    if (btnGenerar) {
+      btnGenerar.disabled = true;
+      btnGenerar.classList.add("opacity-50", "cursor-not-allowed");
+    }
+
+    // Activar modo Excel (limpiando por seguridad al alternar)
+    if (selectTipo) {
+      selectTipo.value = "";
+      selectTipo.disabled = false;
+    }
+    if (inputSim) {
+      inputSim.value = "";
+      inputSim.disabled = false;
+    }
+    if (btnExportar) {
+      btnExportar.disabled = false;
+      btnExportar.classList.remove("opacity-50", "cursor-not-allowed");
+    }
 
     // Estilos visuales activados para Excel
-    fieldsetTipo.classList.remove("opacity-60", "bg-slate-100");
-    fieldsetGuia.classList.remove("opacity-60", "bg-slate-100");
+    if (fieldsetTipo) fieldsetTipo.classList.remove("opacity-60", "bg-slate-100");
+    if (fieldsetGuia) fieldsetGuia.classList.remove("opacity-60", "bg-slate-100");
   }
 };
 // Declaración del array temporal para acumular los envíos antes de guardarlos en la base de datos
@@ -308,36 +331,71 @@ window.agregarEnvioTemporal = async function (event) {
       return;
     }
 
-    const hoy = new Date().toISOString().split("T")[0];
-    let registrosEnBD = 0;
+    const hoyStr = new Date().toISOString().split("T")[0]; // YYYY-MM-DD
+    let maxOrdenBD = 0;
 
-    // 3. CONSULTA HACIA TU VISTA PARA OBTENER SOLO ADMISIONES
+    // 3. CONSULTA RELACIONAL USANDO LA TABLA 'guia_documento' PARA UNIR 'guia' Y 'documento'
     try {
-      const { data: documentosHoy, error: queryError } =
+      const { data: relacionBD, error: queryError } =
         await window.supabaseClient
-          .from("vista_envios_diarios")
-          .select("id")
-          .eq("codigo", textoServicio)
-          .eq("sucursal_id", sucursalId)
-          .gte("fecha", `${hoy} 00:00:00`)
-          .lte("fecha", `${hoy} 23:59:59`);
+          .from("guia_documento")
+          .select(`
+            documento_id,
+            guia_id,
+            documento!inner (
+              id,
+              orden,
+              tipo_servicio_id
+            ),
+            guia!inner (
+              id,
+              tipo,
+              fecha,
+              sucursal_id
+            )
+          `)
+          .eq("guia.sucursal_id", parseInt(sucursalId))
+          .eq("guia.tipo", "admision")
+          .eq("documento.tipo_servicio_id", parseInt(tipoServicioId));
 
-      if (!queryError && documentosHoy) {
-        registrosEnBD = documentosHoy.length;
+      if (!queryError && relacionBD) {
+        // Filtramos en JavaScript los registros que correspondan estrictamente a la fecha de hoy
+        const registrosDeHoy = relacionBD.filter((item) => {
+          const fechaGuia = item.guia?.fecha;
+          if (!fechaGuia) return false;
+          return String(fechaGuia).startsWith(hoyStr);
+        });
+
+        if (registrosDeHoy.length > 0) {
+          maxOrdenBD = Math.max(
+            ...registrosDeHoy.map((i) => parseInt(i.documento?.orden) || 0)
+          );
+        }
       }
     } catch (dbErr) {
       console.warn(
-        "Aviso: No se pudieron consultar los registros previos.",
+        "Aviso: No se pudo consultar la relación de guías y documentos en BD.",
         dbErr,
       );
-      registrosEnBD = 0;
     }
 
-    const registrosEnTemporal = listaEnviosTemporal.filter(
-      (item) => item.tipo_servicio_id === tipoServicioId,
-    ).length;
+    // 4. BUSCAR EL ORDEN MÁS ALTO EN LOS REGISTROS TEMPORALES PENDIENTES EN PANTALLA
+    let maxOrdenTemporal = 0;
+    if (!window.listaEnviosTemporal) window.listaEnviosTemporal = [];
 
-    const nuevoOrden = registrosEnBD + registrosEnTemporal + 1;
+    const temporalesDeEsteServicio = window.listaEnviosTemporal.filter(
+      (item) => String(item.tipo_servicio_id) === String(tipoServicioId)
+    );
+
+    if (temporalesDeEsteServicio.length > 0) {
+      maxOrdenTemporal = Math.max(
+        ...temporalesDeEsteServicio.map((i) => parseInt(i.orden) || 0),
+      );
+    }
+
+    // 5. EL NUEVO ORDEN CORRECTO (MÁXIMO ENTRE BD Y PANTALLA + 1)
+    const maxGlobal = Math.max(maxOrdenBD, maxOrdenTemporal);
+    const nuevoOrden = maxGlobal + 1;
 
     const valorPesoInput = parseFloat(inputPeso.value) || 0;
     const pesoTransformado = (valorPesoInput / 1000).toFixed(3);
@@ -373,16 +431,17 @@ window.agregarEnvioTemporal = async function (event) {
       cantidad: 1,
     };
 
-    // 4. Agregamos al array temporal
-    listaEnviosTemporal.push(nuevoItem);
+    // 6. Agregamos al array temporal
+    window.listaEnviosTemporal.push(nuevoItem);
 
-    // 5. Renderizamos inmediatamente
+    // 7. Renderizamos inmediatamente
     if (typeof window.renderizarTablaTemporal === "function") {
       window.renderizarTablaTemporal();
     }
 
-    // 6. 🧹 LIMPIEZA TOTAL DE TODOS LOS CAMPOS (INCLUYENDO HOJA DE RUTA)
-    document.getElementById("form-ingreso-envio").reset();
+    // 8. 🧹 LIMPIEZA TOTAL DE TODOS LOS CAMPOS
+    const formIngreso = document.getElementById("form-ingreso-envio");
+    if (formIngreso) formIngreso.reset();
 
     // Restablecer selects dependientes
     if (selectProv) {
@@ -394,10 +453,10 @@ window.agregarEnvioTemporal = async function (event) {
       selectDistrito.disabled = true;
     }
 
-    // Limpiar explícitamente el input de la Hoja de Ruta para que quede en blanco
+    // Limpiar explícitamente el input de la Hoja de Ruta
     if (inputHojaRuta) {
       inputHojaRuta.value = "";
-      inputHojaRuta.focus(); // Pone el cursor directamente ahí
+      inputHojaRuta.focus();
     }
   } catch (err) {
     console.error("Error al procesar el envío temporal:", err);
@@ -413,16 +472,17 @@ window.renderizarTablaTemporal = function () {
   const contenedor = document.getElementById("wrapper-gridjs-envios");
 
   if (!contenedor) return;
+  if (!window.listaEnviosTemporal) window.listaEnviosTemporal = [];
 
   // 1. Calcular totales reales
-  const totalGral = listaEnviosTemporal.length;
+  const totalGral = window.listaEnviosTemporal.length;
 
-  const totalSen = listaEnviosTemporal.filter((i) => {
+  const totalSen = window.listaEnviosTemporal.filter((i) => {
     const texto = (i.tipo_servicio_texto || "").toUpperCase();
     return texto.includes("SEN");
   }).length;
 
-  const totalSel = listaEnviosTemporal.filter((i) => {
+  const totalSel = window.listaEnviosTemporal.filter((i) => {
     const texto = (i.tipo_servicio_texto || "").toUpperCase();
     return texto.includes("SEL");
   }).length;
@@ -448,7 +508,7 @@ window.renderizarTablaTemporal = function () {
   }
 
   // 3. Preparar datos para Grid.js
-  const datosParaGrid = listaEnviosTemporal.map((item) => [
+  const datosParaGrid = window.listaEnviosTemporal.map((item) => [
     item.orden, // 1. Ord
     item.hoja_ruta, // 2. Hoja Ruta
     item.tipo_servicio_texto, // 3. Servicio

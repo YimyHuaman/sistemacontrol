@@ -322,5 +322,4 @@ window.cerrarModalDetalleGuia = function () {
 };
 
 window.inicializarModuloGuias = inicializarModuloGuias;
-window.verDetalleGuia = verDetalleGuia;
 window.verCodigoBarrasGuia = verCodigoBarrasGuia;
