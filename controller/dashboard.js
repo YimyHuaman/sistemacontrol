@@ -26,19 +26,20 @@ window.initDashboard = function (userData) {
 };
 
 // Función principal unificada para cambiar secciones, cargar HTML y activar iconos automáticamente
+// ==========================================
+// FUNCIÓN CARGAR SECCIÓN (SPA)
+// ==========================================
+// ==========================================
+// FUNCIÓN CARGAR SECCIÓN (SPA) - CORREGIDA
+// ==========================================
 async function cargarSeccion(seccion, elemento) {
-  // 1. Manejo del contenido dinámico (SPA cargando archivos desde la carpeta view)
   const contenedor = document.getElementById("app-view");
 
   try {
     let archivoHtml = "";
 
-    // Evaluamos qué sección se solicitó para determinar qué archivo HTML cargar
-    if (
-      seccion === "admision" ||
-      seccion === "nuevos" ||
-      seccion === "ingreso"
-    ) {
+    // Evaluamos la sección para determinar qué vista HTML cargar
+    if (seccion === "admision") {
       archivoHtml = "view/admission.html";
     } else if (seccion === "envios") {
       archivoHtml = "view/document.html";
@@ -50,19 +51,18 @@ async function cargarSeccion(seccion, elemento) {
       archivoHtml = "view/consolidado.html";
     }
 
-    // Si se encontró un archivo válido para la sección
     if (archivoHtml) {
-      // Petición fetch apuntando al archivo HTML de la vista
+      // Petición fetch al HTML de la vista
       const respuesta = await fetch(archivoHtml);
       if (!respuesta.ok)
         throw new Error(`No se pudo cargar el archivo ${archivoHtml}`);
 
-      // Inyectamos el contenido HTML descargado dentro del contenedor principal de la SPA
+      // Inyectamos el HTML en el contenedor principal
       contenedor.innerHTML = await respuesta.text();
 
-      // 🔑 SOLUCIÓN SPA: Damos un pequeño respiro (50ms) para que el DOM pinte los elementos y ejecutamos los scripts de la vista
+      // Damos un tiempo (50ms) para que el DOM se renderice antes de reasociar eventos/datos
       setTimeout(() => {
-        // 1. Convierte todos los <i data-lucide="..."></i> en vectores visuales de Lucide
+        // 1. Iconos de Lucide
         if (
           typeof lucide !== "undefined" &&
           typeof lucide.createIcons === "function"
@@ -70,49 +70,45 @@ async function cargarSeccion(seccion, elemento) {
           lucide.createIcons();
         }
 
-        // 2. Si la sección es de admisión, disparamos la función que trae y pinta los datos
-        if (
-          (seccion === "admision" ||
-            seccion === "nuevos" ||
-            seccion === "ingreso") &&
-          typeof window.listarEnviosDiarios === "function"
-        ) {
-          window.listarEnviosDiarios();
-        }
-
-        // 3. 🚀 SI LA SECCIÓN ES ENVÍOS: Llamamos al inicializador global que enlazará los eventos y cargará los pendientes
-        if (seccion === "envios") {
-          if (typeof window.inicializarModuloEnvios === "function") {
-            window.inicializarModuloEnvios();
-          } else {
-            console.warn(
-              "La función window.inicializarModuloEnvios no está definida. Verifica que document.js esté cargado.",
-            );
+        // 2. 🚀 SECCIÓN ADMISIÓN
+        if (seccion === "admision") {
+          if (typeof window.inicializarModuloAdmision === "function") {
+            window.inicializarModuloAdmision();
+          }
+          if (typeof window.listarEnviosDiarios === "function") {
+            window.listarEnviosDiarios();
           }
         }
-        // 4. 🚀 SI LA SECCIÓN ES GUÍAS: Llamamos al inicializador del módulo de guías corregido
+        // 3. 🚀 SECCIÓN ENVÍOS
+        else if (seccion === "envios") {
+          if (typeof window.inicializarModuloEnvios === "function") {
+            window.inicializarModuloEnvios();
+            window.listarEnviosDiarios();
+          } else {
+            console.warn("window.inicializarModuloEnvios no está definida.");
+          }
+        }
+        // 4. 🚀 SECCIÓN GUÍAS
         else if (seccion === "guias") {
           if (typeof window.inicializarModuloGuias === "function") {
             window.inicializarModuloGuias();
           } else {
-            console.warn(
-              "La función inicializarModuloGuias no está definida. Verifica que el controlador de guías esté cargado.",
-            );
+            console.warn("inicializarModuloGuias no está definida.");
           }
         }
-        // 5. 🚀 SI LA SECCIÓN ES CONSOLIDADO: Llamamos correctamente al inicializador y validamos su función correspondiente
+        // 5. 🚀 SECCIÓN CONSOLIDADO
         else if (seccion === "consolidado") {
+          window.datosConsolidadoGlobal = [];
           if (typeof window.listarMotivoDescarga === "function") {
             window.listarMotivoDescarga();
-          } else {
-            console.warn(
-              "La función inicializarModuloConsolidado no está definida. Verifica que el controlador de consolidado esté cargado.",
-            );
+          }
+          if (typeof window.renderizarGridConsolidado === "function") {
+            window.renderizarGridConsolidado(null);
           }
         }
       }, 50);
     } else {
-      // Vista por defecto (Home / Panel principal) si no coincide con ninguna ruta anterior
+      // Vista inicial / por defecto
       contenedor.innerHTML = `
         <h1 class="text-2xl font-bold text-slate-800 mb-4">Bienvenido al Panel</h1>
         <p class="text-slate-600">Selecciona una opción del menú lateral para comenzar a operar.</p>
@@ -122,15 +118,14 @@ async function cargarSeccion(seccion, elemento) {
       }, 50);
     }
   } catch (error) {
-    // Manejo de errores en caso de que el fetch falle (por ejemplo, ejecutar sin Live Server)
     contenedor.innerHTML = `
       <h1 class="text-2xl font-bold text-red-600 mb-4">Error de Carga</h1>
-      <p class="text-slate-600">No se pudo cargar el archivo. Verifica que exista y que estés ejecutando el proyecto desde un servidor local (Live Server).</p>
+      <p class="text-slate-600">No se pudo cargar el archivo. Verifica que estés ejecutando desde un servidor local.</p>
     `;
     console.error(error);
   }
 
-  // 2. Limpiar el estado activo (clases de selección) de todos los botones del menú lateral
+  // Marcar visualmente el elemento activo en el menú lateral
   document.querySelectorAll(".nav-item").forEach((el) => {
     el.classList.remove("bg-blue-50", "text-blue-600", "font-semibold");
     el.classList.add("text-slate-600");
@@ -138,7 +133,6 @@ async function cargarSeccion(seccion, elemento) {
     if (icon) icon.classList.remove("text-blue-600");
   });
 
-  // 3. Marcar visualmente de manera permanente el botón que el usuario acaba de seleccionar en el menú
   if (elemento) {
     elemento.classList.add("bg-blue-50", "text-blue-600", "font-semibold");
     elemento.classList.remove("text-slate-600");

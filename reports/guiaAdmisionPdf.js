@@ -17,6 +17,7 @@ async function generarReporteGuiaAdmision(idGuia) {
       return;
     }
 
+    // Consulta incluyendo la hoja_ruta dentro del documento
     const { data, error } = await clienteSupabase
       .from('guia_documento')
       .select(`
@@ -25,6 +26,7 @@ async function generarReporteGuiaAdmision(idGuia) {
           doc_emitido,
           destinatario,
           direccion,
+          hoja_ruta,
           ubigeo:ubigeo_id (
             departamento,
             provincia,
@@ -37,7 +39,6 @@ async function generarReporteGuiaAdmision(idGuia) {
           tipo,
           cantidad,
           fecha,
-          hoja_ruta,
           sucursal:sucursal_id (nombre)
         )
       `)
@@ -54,7 +55,6 @@ async function generarReporteGuiaAdmision(idGuia) {
     const sucursalNombre = guiaInfo.sucursal?.nombre || 'CUSCO';
     const fechaGuia = guiaInfo.fecha ? guiaInfo.fecha.split('T')[0].split('-').reverse().join('/') : '';
     const correlativoGuia = guiaInfo.correlativo || '1';
-    const hojaRutaGuia = guiaInfo.hoja_ruta || 'S/N';
     const anioActual = new Date().getFullYear();
     const tipoOperacion = (guiaInfo.tipo || 'admision').toUpperCase();
 
@@ -80,11 +80,15 @@ async function generarReporteGuiaAdmision(idGuia) {
       const ubicacionCompleta = [ubigeo.distrito, ubigeo.provincia, ubigeo.departamento].filter(Boolean).join(', ') || '-';
       const textoDetalle = `Doc: ${doc.doc_emitido || '-'} / Destinatario: ${doc.destinatario || '-'}\nDir: ${doc.direccion || '-'} - ${ubicacionCompleta}`;
       
+      // Tomamos la hoja de ruta propia de cada documento
+      const hojaRutaItem = doc.hoja_ruta || '-';
+      
       let pesoNum = parseFloat(doc.peso) || 0;
       let pesoTexto = pesoNum <= 1 && pesoNum > 0 ? `${pesoNum.toFixed(3)} gr` : `${pesoNum.toFixed(3)} kgr`;
 
       return [
         { text: (index + 1).toString(), fontSize: 8, alignment: 'center', margin: [0, 4, 0, 4] },
+        { text: hojaRutaItem, fontSize: 8, alignment: 'center', margin: [2, 4, 2, 4] },
         { text: textoDetalle, fontSize: 8, margin: [4, 4, 4, 4] },
         { text: pesoTexto, fontSize: 8, alignment: 'center', margin: [0, 4, 0, 4] }
       ];
@@ -101,24 +105,29 @@ async function generarReporteGuiaAdmision(idGuia) {
               width: '*',
               stack: [
                 imagenLogoBase64 ? { image: imagenLogoBase64, width: 130, margin: [0, 0, 0, 4] } : { text: 'Serpost', fontSize: 20, bold: true },
+                { text: 'CLIENTE: CONTRALORIA GENERAL DE LA REPUBLICA', fontSize: 9, bold: true, margin: [0, 0, 0, 2] },
                 { columns: [{ text: `Sucursal: ${sucursalNombre}`, fontSize: 9, bold: true }, { text: `Fecha: ${fechaGuia}`, fontSize: 8, bold: true }], margin: [0, 2, 0, 2] },
-                { columns: [{ text: `Hoja de Ruta: ${hojaRutaGuia}`, fontSize: 8, bold: true }, { text: `Cantidad de Ítems: ${data.length}`, fontSize: 8 }], margin: [0, 2, 0, 2] }
+                { columns: [{ text: `Cantidad de Ítems: ${data.length}`, fontSize: 8 }], margin: [0, 2, 0, 2] }
               ]
             },
             {
               width: 200,
-              table: {
-                widths: ['*'],
-                body: [[{
-                  text: [
-                    { text: 'R.U.C. 20256136865\n', fontSize: 9, bold: true },
-                    { text: `GUÍA DE ${tipoOperacion}\n`, fontSize: 11, bold: true, color: '#990000' },
-                    { text: `SERIE ${anioActual}    Nº ${correlativoGuia}`, fontSize: 10, bold: true }
-                  ],
-                  alignment: 'center',
-                  margin: [5, 5, 5, 5]
-                }]]
-              }
+              stack: [
+                {
+                  table: {
+                    widths: ['*'],
+                    body: [[{
+                      text: [
+                        { text: 'R.U.C. 20256136865\n', fontSize: 9, bold: true },
+                        { text: `GUÍA DE ${tipoOperacion}\n`, fontSize: 11, bold: true, color: '#990000' },
+                        { text: `SERIE ${anioActual}    Nº ${correlativoGuia}`, fontSize: 10, bold: true }
+                      ],
+                      alignment: 'center',
+                      margin: [5, 5, 5, 5]
+                    }]]
+                  }
+                }
+              ]
             }
           ]
         },
@@ -127,10 +136,11 @@ async function generarReporteGuiaAdmision(idGuia) {
         {
           table: {
             headerRows: 1,
-            widths: [30, '*', 70],
+            widths: [30, 65, '*', 70],
             body: [
               [
                 { text: 'ÍTEM', bold: true, fontSize: 8, alignment: 'center', fillColor: '#f0f0f0' },
+                { text: 'HOJA RUTA', bold: true, fontSize: 8, alignment: 'center', fillColor: '#f0f0f0' },
                 { text: 'DESCRIPCIÓN / DESTINATARIO / UBICACIÓN', bold: true, fontSize: 8, alignment: 'center', fillColor: '#f0f0f0' },
                 { text: 'PESO', bold: true, fontSize: 8, alignment: 'center', fillColor: '#f0f0f0' }
               ],
