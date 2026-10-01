@@ -78,12 +78,13 @@ async function cargarGuiasPorTipo(tipoFiltro, nombreModo) {
 
     wrapperTabla.innerHTML = `<div class="p-4 text-center text-slate-400 text-xs">Cargando ${nombreModo}...</div>`;
 
-    // Consulta directa a la tabla guía sin requerir la hoja de ruta
+    // Consulta ordenada directamente desde Supabase de más nuevo a más antiguo (por id o fecha descendente)
     const { data, error } = await clienteSupabase
       .from("guia")
       .select("*")
       .eq("sucursal_id", parseInt(sucursalIdLogueada))
-      .eq("tipo", tipoFiltro);
+      .eq("tipo", tipoFiltro)
+      .order("id", { ascending: false }); // <-- Asegura que los últimos creados salgan primero
 
     if (error) throw new Error(error.message);
 
@@ -118,16 +119,13 @@ function pintarTablaGuias(datos, tipoFiltro) {
         ? formatearFechaHoraGuia(item.fecha)
         : item.fecha;
 
-    // Normalizar el filtro a minúsculas para comparaciones seguras
     const modoFiltro = String(tipoFiltro || "").toLowerCase();
 
-    // 1. La función de impresión varía según el modo
     const funcionImprimir =
       modoFiltro === "devolucion"
         ? "imprimirGuiaDevolucion"
         : "imprimirGuiaAdmision";
 
-    // 2. Primer Botón: Llama al Modal de Detalles para AMBOS modos
     let accionesHtml = `
       <div class="flex items-center gap-1.5">
         <button onclick="verDetalleGuiaModal('${idGuia}')" title="Ver Listado / Detalles" class="p-1 text-slate-600 hover:text-blue-600 hover:bg-blue-50 rounded transition">
@@ -137,7 +135,6 @@ function pintarTablaGuias(datos, tipoFiltro) {
         </button>
     `;
 
-    // 3. Segundo Botón: Código de Barras exclusivo para Admisión (no aparece en Devolución)
     if (modoFiltro === "admision") {
       accionesHtml += `
         <button onclick="imprimirCodigoBarrasGuia('${idGuia}', '${correlativo}')" title="Código de Barras" class="p-1 text-slate-600 hover:text-indigo-600 hover:bg-indigo-50 rounded transition">
@@ -148,7 +145,6 @@ function pintarTablaGuias(datos, tipoFiltro) {
       `;
     }
 
-    // 4. Tercer Botón: Imprimir Guía PDF (Admisión o Devolución)
     accionesHtml += `
         <button onclick="${funcionImprimir}('${idGuia}')" title="Imprimir Guía de ${tipoFiltro}" class="p-1 text-slate-600 hover:text-emerald-600 hover:bg-emerald-50 rounded transition">
           <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
@@ -177,7 +173,13 @@ function pintarTablaGuias(datos, tipoFiltro) {
     data: rowsData,
     pagination: { limit: 10 },
     search: true,
-    sort: true,
+    sort: {
+      // Configuración por defecto para que Grid.js ordene descendentemente por la primera columna (Correlativo) al iniciar
+      initial: {
+        index: 0,
+        direction: 'desc'
+      }
+    },
   }).render(contenedor);
 }
 
@@ -193,7 +195,6 @@ window.verDetalleGuiaModal = async function (idGuia) {
       return;
     }
 
-    // 1. Mostrar un indicador de carga o abrir el modal vacío con "Cargando..."
     let modalContainer = document.getElementById("modal-detalle-guia");
     if (!modalContainer) {
       modalContainer = crearEstructuraModalHtml();
@@ -204,11 +205,9 @@ window.verDetalleGuiaModal = async function (idGuia) {
     );
     cuerpoTablaModal.innerHTML = `<tr><td colspan="6" class="text-center py-4 text-slate-400 text-xs">Cargando detalles de la guía...</td></tr>`;
 
-    // Mostrar el modal (usando clases de Tailwind para mostrarlo)
     modalContainer.classList.remove("hidden");
     modalContainer.classList.add("flex");
 
-    // 2. Consultar los documentos asociados a esta guía usando la relación
     const { data, error } = await clienteSupabase
       .from("guia_documento")
       .select(
@@ -230,7 +229,6 @@ window.verDetalleGuiaModal = async function (idGuia) {
 
     if (error) throw new Error(error.message);
 
-    // 3. Limpiar y rellenar la tabla del modal
     cuerpoTablaModal.innerHTML = "";
 
     if (!data || data.length === 0) {
@@ -272,7 +270,6 @@ window.verDetalleGuiaModal = async function (idGuia) {
   }
 };
 
-// Función auxiliar que inyecta el HTML del modal en el DOM si no existe
 function crearEstructuraModalHtml() {
   const div = document.createElement("div");
   div.id = "modal-detalle-guia";
@@ -280,12 +277,10 @@ function crearEstructuraModalHtml() {
     "fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm hidden";
   div.innerHTML = `
     <div class="bg-white rounded-lg shadow-xl w-11/12 max-w-4xl overflow-hidden flex flex-col max-h-[85vh]">
-      <!-- Header -->
       <div class="flex items-center justify-between px-6 py-4 bg-slate-100 border-b">
         <h3 class="text-sm font-bold text-slate-800">📋 Detalle de Documentos de la Guía</h3>
         <button onclick="cerrarModalDetalleGuia()" class="text-slate-400 hover:text-slate-600 text-lg font-bold">&times;</button>
       </div>
-      <!-- Body -->
       <div class="p-6 overflow-y-auto flex-1">
         <table class="w-full text-left border-collapse text-xs">
           <thead>
@@ -299,11 +294,9 @@ function crearEstructuraModalHtml() {
             </tr>
           </thead>
           <tbody id="cuerpo-tabla-detalle-modal">
-            <!-- Dinámico -->
           </tbody>
         </table>
       </div>
-      <!-- Footer -->
       <div class="px-6 py-3 bg-slate-50 border-t flex justify-end">
         <button onclick="cerrarModalDetalleGuia()" class="px-4 py-1.5 bg-slate-800 text-white rounded text-xs hover:bg-slate-700 transition">Cerrar</button>
       </div>
@@ -322,4 +315,3 @@ window.cerrarModalDetalleGuia = function () {
 };
 
 window.inicializarModuloGuias = inicializarModuloGuias;
-window.verCodigoBarrasGuia = verCodigoBarrasGuia;

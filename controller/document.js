@@ -518,6 +518,20 @@ window.buscarEnvioParaDescargo = async function () {
 };
 
 // ==========================================
+// CONFIGURAR DETECCIÓN AUTOMÁTICA CON PISTOLA / ENTER
+// ==========================================
+document.addEventListener("DOMContentLoaded", () => {
+  const codigoInput = document.getElementById("modalCodigoInput");
+  if (codigoInput) {
+    codigoInput.addEventListener("keydown", (event) => {
+      if (event.key === "Enter") {
+        event.preventDefault(); // Evita comportamientos por defecto del formulario
+        window.buscarEnvioParaDescargo(); // Ejecuta la búsqueda automáticamente
+      }
+    });
+  }
+});
+// ==========================================
 // 5. CONFIRMAR Y ACTUALIZAR (UPDATE)
 // ==========================================
 window.confirmarAccionModal = async function () {

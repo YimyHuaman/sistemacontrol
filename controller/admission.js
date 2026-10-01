@@ -1,3 +1,6 @@
+// 1. VARIABLE GLOBAL UNIFICADA
+window.listaEnviosTemporal = window.listaEnviosTemporal || [];
+
 document.addEventListener("keydown", function (event) {
   // Verificamos si la tecla presionada es ENTER
   if (event.key === "Enter") {
@@ -42,7 +45,7 @@ document.addEventListener("keydown", function (event) {
 // Dentro de admission.js, define esta función principal:
 window.inicializarModuloAdmision = function () {
   console.log("🔄 Reiniciando módulo de admisión por completo...");
-  
+
   // 1. Vuelve a cargar las variables o fechas de filtrado inicial (ej. la fecha de hoy)
   if (typeof establecerFechaHoy === "function") {
     establecerFechaHoy();
@@ -61,69 +64,86 @@ window.inicializarModuloAdmision = function () {
   }
 };
 
-window.cambiarModoOperacion = function () {
+function cambiarModoOperacion() {
+  // Obtenemos los elementos de los radio buttons
   const radioBarras = document.getElementById("radio-generar-barras");
   const radioExcel = document.getElementById("radio-exportar-excel");
-  const btnGenerar = document.getElementById("btn-generar-barras");
-  const fieldsetTipo = document.getElementById("fieldset-tipo-servicio");
-  const selectTipo = document.getElementById("input-tipo-servicio-exportar");
+
+  // Elementos de la sección "Generar Barras"
+  const btnGenerarBarras = document.getElementById("btn-generar-barras");
+
+  // Elementos de la sección "Exportar Excel"
+  const fieldsetTipoServicio = document.getElementById(
+    "fieldset-tipo-servicio",
+  );
+  const selectTipoServicio = document.getElementById(
+    "input-tipo-servicio-exportar",
+  );
+
   const fieldsetGuia = document.getElementById("fieldset-guia");
   const inputSim = document.getElementById("input-sim");
-  const btnExportar = document.getElementById("btn-exportar-excel");
+
+  const btnExportarExcel = document.getElementById("btn-exportar-excel");
 
   if (radioBarras && radioBarras.checked) {
-    // --- ACTIVAR MODO BARRAS ---
-    if (btnGenerar) {
-      btnGenerar.disabled = false;
-      btnGenerar.classList.remove("opacity-50", "cursor-not-allowed");
-    }
+    // --- MODO 1: GENERAR BARRAS ACTIVO ---
 
-    // Desactivar modo Excel y limpiar sus campos
-    if (selectTipo) {
-      selectTipo.value = "";
-      selectTipo.disabled = true;
-    }
-    if (inputSim) {
-      inputSim.value = "";
-      inputSim.disabled = true;
-    }
-    if (btnExportar) {
-      btnExportar.disabled = true;
-      btnExportar.classList.add("opacity-50", "cursor-not-allowed"); // Opcional por consistencia visual
-    }
+    // 1. Activar botón de barras
+    btnGenerarBarras.disabled = false;
+    btnGenerarBarras.classList.remove("opacity-40", "cursor-not-allowed");
 
-    // Estilos visuales desactivados para Excel
-    if (fieldsetTipo) fieldsetTipo.classList.add("opacity-60", "bg-slate-100");
-    if (fieldsetGuia) fieldsetGuia.classList.add("opacity-60", "bg-slate-100");
+    // 2. Desactivar y limpiar campos de Exportar Excel
+    selectTipoServicio.value = "";
+    selectTipoServicio.disabled = true;
 
+    inputSim.value = "";
+    inputSim.disabled = true;
+
+    btnExportarExcel.disabled = true;
+
+    // 3. Aplicar estilos visuales de desactivado (opacidad y fondo) a los fieldsets de Excel
+    fieldsetTipoServicio.classList.add("bg-slate-100", "opacity-60");
+    fieldsetTipoServicio.classList.remove(
+      "bg-white",
+      "opacity-100",
+      "border-blue-500",
+      "ring-1",
+      "ring-blue-500",
+    );
+
+    fieldsetGuia.classList.add("bg-slate-100", "opacity-60");
+    fieldsetGuia.classList.remove(
+      "bg-white",
+      "opacity-100",
+      "border-blue-500",
+      "ring-1",
+      "ring-blue-500",
+    );
   } else if (radioExcel && radioExcel.checked) {
-    // --- ACTIVAR MODO EXCEL ---
-    if (btnGenerar) {
-      btnGenerar.disabled = true;
-      btnGenerar.classList.add("opacity-50", "cursor-not-allowed");
-    }
+    // --- MODO 2: EXPORTAR EXCEL ACTIVO ---
 
-    // Activar modo Excel (limpiando por seguridad al alternar)
-    if (selectTipo) {
-      selectTipo.value = "";
-      selectTipo.disabled = false;
-    }
-    if (inputSim) {
-      inputSim.value = "";
-      inputSim.disabled = false;
-    }
-    if (btnExportar) {
-      btnExportar.disabled = false;
-      btnExportar.classList.remove("opacity-50", "cursor-not-allowed");
-    }
+    // 1. Desactivar botón de barras
+    btnGenerarBarras.disabled = true;
+    btnGenerarBarras.classList.add("opacity-40", "cursor-not-allowed");
 
-    // Estilos visuales activados para Excel
-    if (fieldsetTipo) fieldsetTipo.classList.remove("opacity-60", "bg-slate-100");
-    if (fieldsetGuia) fieldsetGuia.classList.remove("opacity-60", "bg-slate-100");
+    // 2. Activar campos de Exportar Excel
+    selectTipoServicio.disabled = false;
+    inputSim.disabled = false;
+    btnExportarExcel.disabled = false;
+
+    // 3. Aplicar estilos visuales de activo a los fieldsets
+    fieldsetTipoServicio.classList.remove("bg-slate-100", "opacity-60");
+    fieldsetTipoServicio.classList.add("bg-white", "opacity-100");
+
+    fieldsetGuia.classList.remove("bg-slate-100", "opacity-60");
+    fieldsetGuia.classList.add("bg-white", "opacity-100");
   }
-};
-// Declaración del array temporal para acumular los envíos antes de guardarlos en la base de datos
-let listaEnviosTemporal = [];
+}
+
+// Ejecutar al cargar la página por si el navegador mantiene el estado inicial
+document.addEventListener("DOMContentLoaded", () => {
+  cambiarModoOperacion();
+});
 
 // Declaración de la variable para la instancia de Grid.js del listado diario (corregida a null para evitar conflictos de tipo)
 let gridInstanceListadoDiario = null;
@@ -339,7 +359,8 @@ window.agregarEnvioTemporal = async function (event) {
       const { data: relacionBD, error: queryError } =
         await window.supabaseClient
           .from("guia_documento")
-          .select(`
+          .select(
+            `
             documento_id,
             guia_id,
             documento!inner (
@@ -353,7 +374,8 @@ window.agregarEnvioTemporal = async function (event) {
               fecha,
               sucursal_id
             )
-          `)
+          `,
+          )
           .eq("guia.sucursal_id", parseInt(sucursalId))
           .eq("guia.tipo", "admision")
           .eq("documento.tipo_servicio_id", parseInt(tipoServicioId));
@@ -368,7 +390,7 @@ window.agregarEnvioTemporal = async function (event) {
 
         if (registrosDeHoy.length > 0) {
           maxOrdenBD = Math.max(
-            ...registrosDeHoy.map((i) => parseInt(i.documento?.orden) || 0)
+            ...registrosDeHoy.map((i) => parseInt(i.documento?.orden) || 0),
           );
         }
       }
@@ -384,7 +406,7 @@ window.agregarEnvioTemporal = async function (event) {
     if (!window.listaEnviosTemporal) window.listaEnviosTemporal = [];
 
     const temporalesDeEsteServicio = window.listaEnviosTemporal.filter(
-      (item) => String(item.tipo_servicio_id) === String(tipoServicioId)
+      (item) => String(item.tipo_servicio_id) === String(tipoServicioId),
     );
 
     if (temporalesDeEsteServicio.length > 0) {
@@ -1069,20 +1091,40 @@ window.listarEnviosDiarios = async function () {
 
     console.log("📦 Datos totales de la sucursal:", data);
 
-    // 4. COMPARAR LA FECHA DE LA VISTA CON LA DEL EQUIPO (Usando fecha_ingreso de la vista)
+    // 4. COMPARAR LA FECHA DE LA VISTA CON LA DEL EQUIPO
     const datosFiltrados = (data || []).filter((item) => {
       const fechaDoc = item.fecha_ingreso || item.fecha;
       if (!fechaDoc) return false;
 
-      // Extraer solo los primeros 10 caracteres (YYYY-MM-DD) para evitar problemas de zona horaria
       const fechaVistaStr = String(fechaDoc).substring(0, 10);
-
       return fechaVistaStr === fechaEquipoStr;
     });
 
     console.log("📅 Datos filtrados para hoy:", datosFiltrados);
 
-    // 5. ORDENAR LOS DATOS: Primero por Servicio (alfabéticamente) y luego por N° de Orden
+    // 📊 CALCULAR CONTADORES (SEL, SEN y TOTAL) Y ACTUALIZAR EL DOM
+    let totalSel = 0;
+    let totalSen = 0;
+
+    datosFiltrados.forEach((item) => {
+      const servicio = (item.tipo_servicio_codigo || item.codigo || "").toUpperCase();
+      if (servicio === "SEL") {
+        totalSel++;
+      } else if (servicio === "SEN") {
+        totalSen++;
+      }
+    });
+
+    const totalGeneral = datosFiltrados.length;
+
+    // Actualizar los valores en los elementos del DOM superior
+    if (document.getElementById("contador-sel")) {
+      document.getElementById("contador-sel").textContent = totalSel;
+      document.getElementById("contador-sen").textContent = totalSen;
+      document.getElementById("contador-total").textContent = totalGeneral;
+    }
+
+    // 5. ORDENAR LOS DATOS: Primero por Servicio y luego por N° de Orden
     datosFiltrados.sort((a, b) => {
       const servicioA = a.tipo_servicio_codigo || a.codigo || "";
       const servicioB = b.tipo_servicio_codigo || b.codigo || "";
@@ -1118,7 +1160,7 @@ window.listarEnviosDiarios = async function () {
       return;
     }
 
-    // 8. CREAR GRID.JS CON ANCHOS PROPORCIONALES Y AJUSTADOS
+    // 8. CREAR GRID.JS CON BUSCADOR EN ESPAÑOL ("Buscar envío...")
     gridInstanceListadoDiario = new gridjs.Grid({
       columns: [
         { name: "Servicio", width: "8%" },
@@ -1157,6 +1199,9 @@ window.listarEnviosDiarios = async function () {
         },
       },
       language: {
+        search: {
+          placeholder: "Buscar envío...",
+        },
         noRecordsFound:
           "No hay envíos registrados con la fecha de hoy en esta sucursal.",
       },
@@ -1728,3 +1773,25 @@ function descargarExcelSinBordes(data, nombreArchivo) {
   document.body.removeChild(a);
   URL.revokeObjectURL(url);
 }
+
+// 📊 CALCULAR CONTADORES (SEL, SEN y TOTAL)
+    let totalSel = 0;
+    let totalSen = 0;
+
+    datosFiltrados.forEach((item) => {
+      const servicio = (item.tipo_servicio_codigo || item.codigo || "").toUpperCase();
+      if (servicio === "SEL") {
+        totalSel++;
+      } else if (servicio === "SEN") {
+        totalSen++;
+      }
+    });
+
+    const totalGeneral = datosFiltrados.length;
+
+    // Actualizar los valores en los elementos del DOM superior
+    if (document.getElementById("contador-sel")) {
+      document.getElementById("contador-sel").textContent = totalSel;
+      document.getElementById("contador-sen").textContent = totalSen;
+      document.getElementById("contador-total").textContent = totalGeneral;
+    }

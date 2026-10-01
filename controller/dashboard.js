@@ -26,36 +26,30 @@ window.initDashboard = function (userData) {
 };
 
 // Función principal unificada para cambiar secciones, cargar HTML y activar iconos automáticamente
-// ==========================================
-// FUNCIÓN CARGAR SECCIÓN (SPA)
-// ==========================================
-// ==========================================
-// FUNCIÓN CARGAR SECCIÓN (SPA) - CORREGIDA
-// ==========================================
 async function cargarSeccion(seccion, elemento) {
   const contenedor = document.getElementById("app-view");
 
-  try {
-    let archivoHtml = "";
+  // Diccionario de rutas HTML para cada sección
+  const rutasHtml = {
+    admision: "view/admission.html",
+    envios: "view/document.html",
+    devolucion: "view/devolucion.html",
+    guias: "view/guia.html",
+    consolidado: "view/consolidado.html",
+    sucursales: "view/sucursales.html",
+    colaboradores: "view/colaboradores.html",
+    usuarios: "view/usuario.html"
+  };
 
-    // Evaluamos la sección para determinar qué vista HTML cargar
-    if (seccion === "admision") {
-      archivoHtml = "view/admission.html";
-    } else if (seccion === "envios") {
-      archivoHtml = "view/document.html";
-    } else if (seccion === "devolucion") {
-      archivoHtml = "view/devolucion.html";
-    } else if (seccion === "guias") {
-      archivoHtml = "view/guia.html";
-    } else if (seccion === "consolidado") {
-      archivoHtml = "view/consolidado.html";
-    }
+  try {
+    const archivoHtml = rutasHtml[seccion];
 
     if (archivoHtml) {
       // Petición fetch al HTML de la vista
       const respuesta = await fetch(archivoHtml);
-      if (!respuesta.ok)
+      if (!respuesta.ok) {
         throw new Error(`No se pudo cargar el archivo ${archivoHtml}`);
+      }
 
       // Inyectamos el HTML en el contenedor principal
       contenedor.innerHTML = await respuesta.text();
@@ -63,50 +57,79 @@ async function cargarSeccion(seccion, elemento) {
       // Damos un tiempo (50ms) para que el DOM se renderice antes de reasociar eventos/datos
       setTimeout(() => {
         // 1. Iconos de Lucide
-        if (
-          typeof lucide !== "undefined" &&
-          typeof lucide.createIcons === "function"
-        ) {
+        if (typeof lucide !== "undefined" && typeof lucide.createIcons === "function") {
           lucide.createIcons();
         }
 
-        // 2. 🚀 SECCIÓN ADMISIÓN
-        if (seccion === "admision") {
-          if (typeof window.inicializarModuloAdmision === "function") {
-            window.inicializarModuloAdmision();
-          }
-          if (typeof window.listarEnviosDiarios === "function") {
-            window.listarEnviosDiarios();
-          }
-        }
-        // 3. 🚀 SECCIÓN ENVÍOS
-        else if (seccion === "envios") {
-          if (typeof window.inicializarModuloEnvios === "function") {
-            window.inicializarModuloEnvios();
-            window.listarEnviosDiarios();
-          } else {
-            console.warn("window.inicializarModuloEnvios no está definida.");
-          }
-        }
-        // 4. 🚀 SECCIÓN GUÍAS
-        else if (seccion === "guias") {
-          if (typeof window.inicializarModuloGuias === "function") {
-            window.inicializarModuloGuias();
-          } else {
-            console.warn("inicializarModuloGuias no está definida.");
-          }
-        }
-        // 5. 🚀 SECCIÓN CONSOLIDADO
-        else if (seccion === "consolidado") {
-          window.datosConsolidadoGlobal = [];
-          if (typeof window.listarMotivoDescarga === "function") {
-            window.listarMotivoDescarga();
-          }
-          if (typeof window.renderizarGridConsolidado === "function") {
-            window.renderizarGridConsolidado(null);
-          }
+        // 2. Inicialización según la sección activa
+        switch (seccion) {
+          case "admision":
+            if (typeof window.listarEnviosDiarios === "function") {
+              try {
+                window.listarEnviosDiarios();
+              } catch (error) {
+                console.error("Error al ejecutar listarEnviosDiarios:", error);
+              }
+            } else {
+              console.warn("window.listarEnviosDiarios no está definida.");
+            }
+            break;
+
+          case "envios":
+            if (typeof window.inicializarModuloEnvios === "function") {
+              window.inicializarModuloEnvios();
+              if (typeof window.listarEnviosDiarios === "function") {
+                window.listarEnviosDiarios();
+              }
+            } else {
+              console.warn("window.inicializarModuloEnvios no está definida.");
+            }
+            break;
+
+          case "guias":
+            if (typeof window.inicializarModuloGuias === "function") {
+              window.inicializarModuloGuias();
+            } else {
+              console.warn("window.inicializarModuloGuias no está definida.");
+            }
+            break;
+
+          case "consolidado":
+            window.datosConsolidadoGlobal = [];
+            if (typeof window.listarMotivoDescarga === "function") {
+              window.listarMotivoDescarga();
+            }
+            if (typeof window.renderizarGridConsolidado === "function") {
+              window.renderizarGridConsolidado(null);
+            }
+            break;
+
+          case "sucursales":
+            if (typeof window.cargarTablaSucursales === "function") {
+              window.cargarTablaSucursales();
+            } else {
+              console.warn("window.cargarTablaSucursales no está definida.");
+            }
+            break;
+
+          case "colaboradores":
+            if (typeof window.cargarTablaColaboradores === "function") {
+              window.cargarTablaColaboradores();
+            } else {
+              console.warn("window.cargarTablaColaboradores no está definida.");
+            }
+            break;
+
+          case "usuarios":
+            if (typeof window.cargarTablaUsuarios === "function") {
+              window.cargarTablaUsuarios();
+            } else {
+              console.warn("window.cargarTablaUsuarios no está definida.");
+            }
+            break;
         }
       }, 50);
+
     } else {
       // Vista inicial / por defecto
       contenedor.innerHTML = `
@@ -114,7 +137,9 @@ async function cargarSeccion(seccion, elemento) {
         <p class="text-slate-600">Selecciona una opción del menú lateral para comenzar a operar.</p>
       `;
       setTimeout(() => {
-        if (typeof lucide !== "undefined") lucide.createIcons();
+        if (typeof lucide !== "undefined" && typeof lucide.createIcons === "function") {
+          lucide.createIcons();
+        }
       }, 50);
     }
   } catch (error) {
@@ -140,8 +165,7 @@ async function cargarSeccion(seccion, elemento) {
     if (icon) icon.classList.add("text-blue-600");
   }
 }
-// 👈 Corregido el cierre de la función (eliminado el paréntesis extra)
-// Función para colapsar o expandir la barra lateral completa (Ajustada a w-56)
+
 function toggleSidebar() {
   const aside = document.getElementById("app-aside");
   const texts = document.querySelectorAll(".aside-text");

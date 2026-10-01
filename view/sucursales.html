@@ -1,0 +1,78 @@
+<!-- ========================================== -->
+<!-- 1. MÓDULO PRINCIPAL DE SUCURSAL -->
+<!-- ========================================== -->
+<div
+  class="bg-white p-3 rounded-xl shadow-sm border border-slate-200 mb-4 flex items-center justify-between gap-3 flex-wrap">
+  <!-- Título y subtítulo -->
+  <div class="flex-shrink-0">
+    <h2 class="text-base font-bold text-slate-800">Módulo de Sucursales</h2>
+    <p class="text-[11px] text-slate-500">Gestión de sucursales</p>
+  </div>
+
+  <!-- Botones de Acción Principales -->
+  <div class="flex items-center gap-2 flex-shrink-0">
+    <button onclick="abrirModalSucursal()" id="btn-nueva-sucursal"
+      class="px-3 py-1.5 bg-blue-600 text-white font-medium text-xs rounded-lg hover:bg-blue-700 transition shadow-sm flex items-center gap-1.5">
+      <i data-lucide="plus" class="w-3.5 h-3.5"></i> Nueva Sucursal
+    </button>
+  </div>
+</div>
+
+<!-- Contenedor de la Tabla o Grid de Resultados -->
+<div class="border border-slate-200 rounded-lg overflow-hidden bg-white mt-2 min-h-[200px]">
+  <div id="wrapper-grid-table-sucursales" class="text-xs"></div>
+</div>
+
+<!-- Modal: Nueva Sucursal -->
+<div id="modalSucursal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm hidden">
+  <div class="bg-white rounded-xl shadow-xl w-full max-w-md mx-4 overflow-hidden transform transition-all">
+
+    <!-- Encabezado del Modal -->
+    <div class="flex items-center justify-between px-6 py-4 border-b border-slate-100">
+      <h3 id="tituloModalSucursal" class="text-lg font-semibold text-slate-800">Registrar Nueva Sucursal</h3>
+      <button onclick="cerrarModalSucursal()" class="text-slate-400 hover:text-slate-600 transition">
+        <i data-lucide="x" class="w-5 h-5"></i>
+      </button>
+    </div>
+
+    <!-- Formulario -->
+    <form id="formSucursal" onsubmit="guardarSucursal(event)" class="p-6 space-y-4">
+      
+      <!-- Input Nombre de la Sucursal -->
+      <div>
+        <div class="relative border border-slate-300 rounded-lg px-2.5 pt-3 pb-1 bg-white focus-within:border-blue-600 focus-within:ring-1 focus-within:ring-blue-600">
+          <label class="absolute -top-2 left-2.5 px-1 bg-white text-[10px] font-semibold text-slate-600">
+            Nombre de la Sucursal
+          </label>
+          <input type="text" id="nombreSucursal" placeholder="Ej. Admisión Postal Cusco" autocomplete="off" maxlength="50" required
+            class="w-full bg-white text-xs text-slate-800 py-1 focus:outline-none">
+        </div>
+      </div>
+
+      <!-- Input Iniciales / Código -->
+      <div>
+        <div class="relative border border-slate-300 rounded-lg px-2.5 pt-3 pb-1 bg-white focus-within:border-blue-600 focus-within:ring-1 focus-within:ring-blue-600">
+          <label class="absolute -top-2 left-2.5 px-1 bg-white text-[10px] font-semibold text-slate-600">
+            Iniciales / Código
+          </label>
+          <input type="text" id="inicialesSucursal" placeholder="Ej. CUS" autocomplete="off" maxlength="10" required
+            class="w-full bg-white text-xs text-slate-800 uppercase py-1 focus:outline-none">
+        </div>
+      </div>
+
+      <!-- Botones de Acción -->
+      <div class="flex items-center justify-end gap-3 pt-4 border-t border-slate-100">
+        <button type="button" onclick="cerrarModalSucursal()"
+          class="px-4 py-2 border border-slate-300 rounded-lg text-sm font-medium text-slate-700 hover:bg-slate-50 transition">
+          Cancelar
+        </button>
+        <button type="submit" id="btnAccionSucursal"
+          class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition shadow-sm">
+          Guardar Sucursal
+        </button>
+      </div>
+
+    </form>
+
+  </div>
+</div>

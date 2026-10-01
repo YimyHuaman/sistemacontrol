@@ -33,7 +33,6 @@ document.addEventListener("keydown", function (event) {
   }
 });
 
-
 async function handleLogin(event) {
   event.preventDefault();
 
@@ -75,7 +74,7 @@ async function handleLogin(event) {
       return;
     }
 
-    // 🔑 1. Guardar la sesión completa y los IDs planos en el sesion
+    // 🔑 1. Guardar la sesión completa y los IDs planos en el localStorage
     sessionStorage.setItem("sesion_usuario", JSON.stringify(data));
 
     if (data.sucursal && data.sucursal.id) {
@@ -131,23 +130,20 @@ function initLogin() {
   if (usernameInput) usernameInput.focus();
 }
 // 4. Función global para alternar la visibilidad de la contraseña (Icono del Ojo)
-window.togglePassword = function () {
-  const passwordInput = document.getElementById("password");
-  const eyeIcon = document.getElementById("eye-icon");
+window.togglePassword = function (idInput, idIcono) {
+  const passwordInput = document.getElementById(idInput);
+  const eyeIcon = document.getElementById(idIcono);
 
   if (!passwordInput || !eyeIcon) return;
 
-  // Si la contraseña está oculta, la mostramos y cambiamos el icono a ojo tachado
   if (passwordInput.type === "password") {
     passwordInput.type = "text";
     eyeIcon.setAttribute("data-lucide", "eye-off");
   } else {
-    // Si está visible, la volvemos a ocultar y ponemos el icono de ojo normal
     passwordInput.type = "password";
     eyeIcon.setAttribute("data-lucide", "eye");
   }
 
-  // Vuelve a renderizar los iconos de Lucide para aplicar el cambio visualmente
   if (typeof lucide !== "undefined") {
     lucide.createIcons();
   }
