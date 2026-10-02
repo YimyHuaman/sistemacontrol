@@ -1642,7 +1642,7 @@ window.exportarYActualizarGuiaSim = async function (
         .padStart(5, "0");
 
       const ordenValor = item.orden || index + 1;
-      const ordenPadded = String(ordenValor).padStart(5, "0");
+      const ordenPadded = String(ordenValor).padStart(6, "0");
 
       const codigoBarras14 = `${sucPadded}${guiaSimPadded}${ordenPadded}`;
       const idDocumento = item.id_documento || item.id;
@@ -1774,24 +1774,3 @@ function descargarExcelSinBordes(data, nombreArchivo) {
   URL.revokeObjectURL(url);
 }
 
-// 📊 CALCULAR CONTADORES (SEL, SEN y TOTAL)
-    let totalSel = 0;
-    let totalSen = 0;
-
-    datosFiltrados.forEach((item) => {
-      const servicio = (item.tipo_servicio_codigo || item.codigo || "").toUpperCase();
-      if (servicio === "SEL") {
-        totalSel++;
-      } else if (servicio === "SEN") {
-        totalSen++;
-      }
-    });
-
-    const totalGeneral = datosFiltrados.length;
-
-    // Actualizar los valores en los elementos del DOM superior
-    if (document.getElementById("contador-sel")) {
-      document.getElementById("contador-sel").textContent = totalSel;
-      document.getElementById("contador-sen").textContent = totalSen;
-      document.getElementById("contador-total").textContent = totalGeneral;
-    }

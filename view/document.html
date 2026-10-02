@@ -4,8 +4,9 @@
 <div class="flex flex-col h-full w-full gap-2.5 p-2 bg-slate-50 box-border overflow-hidden">
 
   <!-- BARRA SUPERIOR / HEADER Y CONTROLES -->
-  <div class="bg-white p-3 rounded-2xl shadow-sm border border-slate-200 flex flex-col xl:flex-row items-stretch xl:items-center justify-between gap-3 flex-shrink-0">
-    
+  <div
+    class="bg-white p-3 rounded-2xl shadow-sm border border-slate-200 flex flex-col xl:flex-row items-stretch xl:items-center justify-between gap-3 flex-shrink-0">
+
     <!-- Título y subtítulo -->
     <div class="flex items-center gap-2.5">
       <div class="p-1.5 bg-blue-50 text-blue-600 rounded-xl flex items-center justify-center">
@@ -19,16 +20,18 @@
 
     <!-- CONTENEDOR ÚNICO INTEGRADO (Modos y Fechas) -->
     <div class="flex flex-wrap items-center gap-2.5 bg-slate-50 p-2 rounded-xl border border-slate-200/80">
-      
+
       <!-- Radio: Pendientes -->
-      <label class="flex items-center gap-1.5 cursor-pointer text-xs font-semibold text-slate-700 px-2.5 py-1 rounded-lg hover:bg-white transition shadow-2xs">
+      <label
+        class="flex items-center gap-1.5 cursor-pointer text-xs font-semibold text-slate-700 px-2.5 py-1 rounded-lg hover:bg-white transition shadow-2xs">
         <input type="radio" name="modo_operacion" id="radio-pendientes" value="pendientes" checked
           class="text-blue-600 focus:ring-blue-500">
         <span>Pendientes</span>
       </label>
 
       <!-- Radio: Todos -->
-      <label class="flex items-center gap-1.5 cursor-pointer text-xs font-semibold text-slate-700 px-2.5 py-1 rounded-lg hover:bg-white transition shadow-2xs">
+      <label
+        class="flex items-center gap-1.5 cursor-pointer text-xs font-semibold text-slate-700 px-2.5 py-1 rounded-lg hover:bg-white transition shadow-2xs">
         <input type="radio" name="modo_operacion" id="radio-todos" value="todos"
           class="text-blue-600 focus:ring-blue-500">
         <span>Todos</span>
@@ -39,8 +42,9 @@
 
       <!-- Campos de fecha y botón de búsqueda -->
       <div class="flex flex-wrap items-center gap-2 w-full lg:w-auto">
-        
-        <div class="flex items-center gap-1 bg-white px-2 py-0.5 rounded-lg border border-slate-200 shadow-sm flex-1 sm:flex-initial">
+
+        <div
+          class="flex items-center gap-1 bg-white px-2 py-0.5 rounded-lg border border-slate-200 shadow-sm flex-1 sm:flex-initial">
           <span class="text-[10px] font-medium text-slate-500 flex items-center gap-1 flex-shrink-0">
             <i data-lucide="calendar" class="w-3 h-3 text-slate-400"></i> De:
           </span>
@@ -48,7 +52,8 @@
             class="bg-transparent text-[11px] text-slate-700 disabled:text-slate-400 disabled:cursor-not-allowed focus:outline-none w-full sm:w-24">
         </div>
 
-        <div class="flex items-center gap-1 bg-white px-2 py-0.5 rounded-lg border border-slate-200 shadow-sm flex-1 sm:flex-initial">
+        <div
+          class="flex items-center gap-1 bg-white px-2 py-0.5 rounded-lg border border-slate-200 shadow-sm flex-1 sm:flex-initial">
           <span class="text-[10px] font-medium text-slate-500 flex items-center gap-1 flex-shrink-0">
             <i data-lucide="calendar" class="w-3 h-3 text-slate-400"></i> Hasta:
           </span>
@@ -85,8 +90,8 @@
     <div id="wrapper-grid-table-documentos" class="flex-1 w-full h-full text-xs overflow-auto">
       <div class="flex items-center justify-center h-full text-slate-400 min-h-[200px]">
         <div class="text-center flex flex-col items-center gap-1.5">
-            <i data-lucide="table" class="w-8 h-8 stroke-1 text-slate-300"></i>
-            <span class="text-[11px]">Seleccione un modo o realice una búsqueda para ver los documentos</span>
+          <i data-lucide="table" class="w-8 h-8 stroke-1 text-slate-300"></i>
+          <span class="text-[11px]">Seleccione un modo o realice una búsqueda para ver los documentos</span>
         </div>
       </div>
     </div>
@@ -100,7 +105,8 @@
 <!-- ========================================== -->
 <div id="modal-descargo"
   class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 hidden backdrop-blur-sm p-4">
-  <div class="bg-white rounded-2xl shadow-2xl w-full max-w-xl max-h-[90vh] overflow-y-auto transform transition-all border border-slate-200">
+  <div
+    class="bg-white rounded-2xl shadow-2xl w-full max-w-xl max-h-[90vh] overflow-y-auto transform transition-all border border-slate-200">
 
     <!-- Header del Modal -->
     <div class="bg-slate-50 border-b border-slate-200 px-5 py-3.5 flex justify-between items-center sticky top-0 z-10">
@@ -117,10 +123,14 @@
     <div class="p-4 space-y-3">
       <!-- Código / Referencia y Botón Buscar -->
       <div class="flex items-center gap-2">
-        <div class="relative border border-slate-300 rounded-xl px-3 pt-2.5 pb-1.5 bg-white focus-within:border-blue-600 focus-within:ring-1 focus-within:ring-blue-600 flex-1 flex items-center">
+        <div
+          class="relative border border-slate-300 rounded-xl px-3 pt-2.5 pb-1.5 bg-white focus-within:border-blue-600 focus-within:ring-1 focus-within:ring-blue-600 flex-1 flex items-center">
           <div class="w-full">
-            <label class="absolute -top-2.5 left-3 px-1 bg-white text-[10px] font-semibold text-slate-600">Código / Referencia</label>
+            <label class="absolute -top-2.5 left-3 px-1 bg-white text-[10px] font-semibold text-slate-600">Código /
+              Referencia</label>
+            <!-- ⚡️ Evento Enter incluido para la pistola y teclado -->
             <input type="text" id="modalCodigoInput" placeholder="Digite código..."
+              onkeydown="if(event.key === 'Enter') { event.preventDefault(); window.buscarEnvioParaDescargo(); }"
               class="w-full bg-white text-xs text-slate-800 py-0.5 focus:outline-none">
           </div>
           <i data-lucide="barcode" class="w-4 h-4 text-slate-400 ml-2 shrink-0"></i>
@@ -143,11 +153,13 @@
         </div>
       </div>
 
-      <!-- Fila compartida: Fecha y Motivo -->
+      <!-- Fila compartida: Motivo y Fecha (Limpia, sin ícono duplicado) -->
       <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
-        <div class="relative border border-slate-300 rounded-xl px-3 pt-2.5 pb-1.5 bg-white focus-within:border-blue-600 focus-within:ring-1 focus-within:ring-blue-600 flex items-center">
+        <div
+          class="relative border border-slate-300 rounded-xl px-3 pt-2.5 pb-1.5 bg-white focus-within:border-blue-600 focus-within:ring-1 focus-within:ring-blue-600 flex items-center">
           <div class="w-full">
-            <label class="absolute -top-2.5 left-3 px-1 bg-white text-[10px] font-semibold text-slate-600">Motivo de Descargo</label>
+            <label class="absolute -top-2.5 left-3 px-1 bg-white text-[10px] font-semibold text-slate-600">Motivo de
+              Descargo</label>
             <select id="input-motivo-descargo" required
               class="w-full bg-white text-xs text-slate-800 py-0.5 appearance-none focus:outline-none cursor-pointer">
               <option value="">Seleccione...</option>
@@ -156,13 +168,14 @@
           <i data-lucide="chevron-down" class="w-3.5 h-3.5 text-slate-400 ml-2 shrink-0 pointer-events-none"></i>
         </div>
 
-        <div class="relative border border-slate-300 rounded-xl px-3 pt-2.5 pb-1.5 bg-white focus-within:border-blue-600 focus-within:ring-1 focus-within:ring-blue-600 flex items-center">
+        <div
+          class="relative border border-slate-300 rounded-xl px-3 pt-2.5 pb-1.5 bg-white focus-within:border-blue-600 focus-within:ring-1 focus-within:ring-blue-600 flex items-center">
           <div class="w-full">
-            <label class="absolute -top-2.5 left-3 px-1 bg-white text-[10px] font-semibold text-slate-600">Fecha de Motivo - Entrega / Notificacion</label>
+            <label class="absolute -top-2.5 left-3 px-1 bg-white text-[10px] font-semibold text-slate-600">Fecha de
+              Motivo - Entrega / Notificacion</label>
             <input type="date" id="input-fecha-descargo" required
               class="w-full bg-white text-xs text-slate-800 py-0.5 focus:outline-none uppercase cursor-pointer">
           </div>
-          <i data-lucide="calendar" class="w-3.5 h-3.5 text-slate-400 ml-2 shrink-0 pointer-events-none"></i>
         </div>
       </div>
 
@@ -182,14 +195,13 @@
 
   </div>
 </div>
-
-
 <!-- ========================================== -->
 <!-- 3. MODAL DE DEVOLUCIÓN -->
 <!-- ========================================== -->
 <div id="modal-devolucion"
   class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm hidden z-50 flex items-center justify-center p-3 overflow-y-auto">
-  <div class="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-2xl overflow-hidden animate-in fade-in zoom-in duration-200 my-auto">
+  <div
+    class="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-2xl overflow-hidden animate-in fade-in zoom-in duration-200 my-auto">
 
     <!-- Header del Modal -->
     <div class="px-5 py-3 border-b border-slate-100 flex flex-wrap justify-between items-center bg-slate-50 gap-2">
@@ -197,18 +209,21 @@
         <h3 class="font-bold text-xs md:text-sm text-slate-800 tracking-tight flex items-center gap-1.5">
           <i data-lucide="rotate-ccw" class="w-4 h-4 text-blue-600"></i> Módulo de Devolución - Gestión de Guía
         </h3>
-        <p class="text-[10px] text-slate-500 font-normal">Agregue los envíos al lote antes de realizar la devolución definitiva</p>
+        <p class="text-[10px] text-slate-500 font-normal">Agregue los envíos al lote antes de realizar la devolución
+          definitiva</p>
       </div>
 
       <!-- Controles Superiores: Tipo de Guía y Cantidad -->
       <div class="flex items-center gap-2">
         <div class="relative w-28 border border-slate-300 rounded-xl px-2 pt-2.5 pb-0.5 bg-slate-100/60">
-          <label class="absolute -top-2 left-2 px-1 bg-slate-50 text-[9px] font-semibold text-slate-600">Tipo de Guía</label>
+          <label class="absolute -top-2 left-2 px-1 bg-slate-50 text-[9px] font-semibold text-slate-600">Tipo de
+            Guía</label>
           <input type="text" id="modal-tipo-guia" value="DEVOLUCION" disabled
             class="w-full bg-transparent text-[11px] font-bold text-slate-700 py-0.5 uppercase text-center focus:outline-none">
         </div>
 
-        <div class="relative w-24 border border-slate-300 rounded-xl px-2 pt-2.5 pb-0.5 bg-white focus-within:border-blue-600 focus-within:ring-1 focus-within:ring-blue-600">
+        <div
+          class="relative w-24 border border-slate-300 rounded-xl px-2 pt-2.5 pb-0.5 bg-white focus-within:border-blue-600 focus-within:ring-1 focus-within:ring-blue-600">
           <label class="absolute -top-2 left-2 px-1 bg-white text-[9px] font-semibold text-slate-600">Cantidad *</label>
           <input type="number" id="modal-cantidad-devolucion" value="0" disabled
             class="w-full bg-transparent text-[11px] font-bold text-slate-700 text-center focus:outline-none">
@@ -221,10 +236,15 @@
 
       <!-- Ficha para Agregar Código -->
       <div class="border border-slate-200 rounded-xl p-3 bg-slate-50/50 flex flex-wrap items-center gap-2">
-        <div class="relative flex-1 min-w-[200px] border border-slate-300 rounded-xl px-3 pt-2.5 pb-1 bg-white focus-within:border-blue-600 focus-within:ring-1 focus-within:ring-blue-600 flex items-center">
+        <div
+          class="relative flex-1 min-w-[200px] border border-slate-300 rounded-xl px-3 pt-2.5 pb-1 bg-white focus-within:border-blue-600 focus-within:ring-1 focus-within:ring-blue-600 flex items-center">
           <div class="w-full">
-            <label class="absolute -top-2.5 left-3 px-1 bg-white text-[9px] font-semibold text-slate-500">Código / Referencia *</label>
+            <label class="absolute -top-2.5 left-3 px-1 bg-white text-[9px] font-semibold text-slate-500">Código /
+              Referencia *</label>
+
+            <!-- ⚡️ Campo de texto listo para la pistola de código de barras y evento Enter -->
             <input type="text" id="input-codigo-barras" placeholder="Digite o escanee código..."
+              onkeydown="if(event.key === 'Enter') { event.preventDefault(); window.procesarBusquedaYAgregar(); }"
               class="w-full bg-white text-[11px] text-slate-800 py-0.5 focus:outline-none">
           </div>
           <i data-lucide="barcode" class="w-3.5 h-3.5 text-slate-400 ml-2 shrink-0"></i>
@@ -263,3 +283,121 @@
   </div>
 </div>
 
+<!-- Modal de Edición de Envío (Orden Original y Scroll Garantizado) -->
+<div id="modal-editar-registro" class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-xs hidden p-4">
+  <div class="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden border border-slate-200">
+
+    <!-- Cabecera del Modal (Fija) -->
+    <div class="flex items-center justify-between px-5 py-3.5 border-b border-slate-100 bg-slate-50 shrink-0">
+      <div class="flex items-center gap-2">
+        <div class="p-2 bg-blue-50 text-blue-600 rounded-xl">
+          <svg class="w-5 h-5" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+          </svg>
+        </div>
+        <div>
+          <h3 class="text-xs font-bold text-slate-800">Editar Envío / Documento</h3>
+          <p class="text-[11px] text-slate-500">Código de barras: <span id="codigo-barras-editar" class="font-semibold text-blue-600">---</span></p>
+        </div>
+      </div>
+      <button type="button" onclick="window.cerrarModalEditarRegistro()" class="p-1.5 text-slate-400 hover:text-slate-600 rounded-lg transition cursor-pointer">
+        <svg class="w-5 h-5" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="18" y1="6" x2="6" y2="18"></line>
+          <line x1="6" y1="6" x2="18" y2="18"></line>
+        </svg>
+      </button>
+    </div>
+
+    <!-- Cuerpo del Formulario (Rejilla exacta de 6 columnas con scroll protegido) -->
+    <div class="p-5 grid grid-cols-1 md:grid-cols-6 gap-3.5 overflow-y-auto min-h-0 flex-1">
+
+      <!-- Fila 1: Hoja de Ruta (2) | Tipo Servicio (2) | Doc Emitido (2) = 6 columnas -->
+      <div class="md:col-span-2">
+        <div class="relative border border-slate-300 rounded-lg px-2.5 pt-2.5 pb-1 bg-white focus-within:border-blue-600 focus-within:ring-1 focus-within:ring-blue-600">
+          <label class="absolute -top-2 left-2.5 px-1 bg-white text-[10px] font-semibold text-slate-600">Hoja de Ruta</label>
+          <input type="text" id="input-hoja-ruta-edicion" placeholder="N° Hoja de Ruta" autocomplete="off" maxlength="30" class="w-full bg-white text-xs text-slate-800 uppercase py-0.5 focus:outline-none">
+        </div>
+      </div>
+
+      <div class="md:col-span-2">
+        <div class="relative border border-slate-300 rounded-lg px-2.5 pt-2.5 pb-1 bg-white focus-within:border-blue-600 focus-within:ring-1 focus-within:ring-blue-600">
+          <label class="absolute -top-2 left-2.5 px-1 bg-white text-[10px] font-semibold text-slate-600">Tipo Servicio</label>
+          <select id="input-tipo-servicio-edicion" onchange="cargarTiposDeServicio() " class="select-tipo-servicio w-full bg-white text-xs text-slate-800 py-0.5 focus:outline-none">
+            <option value="">Seleccione...</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="md:col-span-2">
+        <div class="relative border border-slate-300 rounded-lg px-2.5 pt-2.5 pb-1 bg-white focus-within:border-blue-600 focus-within:ring-1 focus-within:ring-blue-600">
+          <label class="absolute -top-2 left-2.5 px-1 bg-white text-[10px] font-semibold text-slate-600">Doc Emitido</label>
+          <input type="text" id="input-documento-edicion" placeholder="N° Doc" autocomplete="off" maxlength="30" class="w-full bg-white text-xs text-slate-800 uppercase py-0.5 focus:outline-none">
+        </div>
+      </div>
+
+      <!-- Fila 2: Destinatario (3) | Dirección (3) = 6 columnas -->
+      <div class="md:col-span-3">
+        <div class="relative border border-slate-300 rounded-lg px-2.5 pt-2.5 pb-1 bg-white focus-within:border-blue-600 focus-within:ring-1 focus-within:ring-blue-600">
+          <label class="absolute -top-2 left-2.5 px-1 bg-white text-[10px] font-semibold text-slate-600">Destinatario</label>
+          <input type="text" id="input-destinatario-edicion" placeholder="Nombres y Apellidos" autocomplete="off" maxlength="50" class="w-full bg-white text-xs text-slate-800 uppercase py-0.5 focus:outline-none">
+        </div>
+      </div>
+
+      <div class="md:col-span-3">
+        <div class="relative border border-slate-300 rounded-lg px-2.5 pt-2.5 pb-1 bg-white focus-within:border-blue-600 focus-within:ring-1 focus-within:ring-blue-600">
+          <label class="absolute -top-2 left-2.5 px-1 bg-white text-[10px] font-semibold text-slate-600">Dirección</label>
+          <input type="text" id="input-direccion-edicion" placeholder="Av. / Calle / Jr. / Urb." autocomplete="off" maxlength="100" class="w-full bg-white text-xs text-slate-800 uppercase py-0.5 focus:outline-none">
+        </div>
+      </div>
+
+      <!-- Fila 3: Departamento (2) | Provincia (2) | Distrito (2) = 6 columnas -->
+      <div class="md:col-span-2">
+        <div class="relative border border-slate-300 rounded-lg px-2.5 pt-2.5 pb-1 bg-white focus-within:border-blue-600 focus-within:ring-1 focus-within:ring-blue-600">
+          <label class="absolute -top-2 left-2.5 px-1 bg-white text-[10px] font-semibold text-slate-600">Departamento</label>
+          <select id="input-departamento-edicion" onchange="cargarDepartamentos()" class="w-full bg-white text-xs text-slate-800 uppercase py-0.5 focus:outline-none">
+            <option value="">Seleccione...</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="md:col-span-2">
+        <div class="relative border border-slate-300 rounded-lg px-2.5 pt-2.5 pb-1 bg-white focus-within:border-blue-600 focus-within:ring-1 focus-within:ring-blue-600">
+          <label class="absolute -top-2 left-2.5 px-1 bg-white text-[10px] font-semibold text-slate-600">Provincia</label>
+          <select id="input-provincia-edicion" onchange="cargarProvincias()" disabled class="w-full bg-white text-xs text-slate-800 uppercase py-0.5 focus:outline-none disabled:opacity-50">
+            <option value="">Seleccione...</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="md:col-span-2">
+        <div class="relative border border-slate-300 rounded-lg px-2.5 pt-2.5 pb-1 bg-white focus-within:border-blue-600 focus-within:ring-1 focus-within:ring-blue-600">
+          <label class="absolute -top-2 left-2.5 px-1 bg-white text-[10px] font-semibold text-slate-600">Distrito</label>
+          <select id="input-distrito-edicion" onchange="cargarDistritos()"  class="w-full bg-white text-xs text-slate-800 uppercase py-0.5 focus:outline-none disabled:opacity-50">
+            <option value="">Seleccione...</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Fila 4: Peso (Ocupa las 2 columnas iniciales o se adapta de forma limpia) -->
+      <div class="md:col-span-2">
+        <div class="relative border border-slate-300 rounded-lg px-2.5 pt-2.5 pb-1 bg-white focus-within:border-blue-600 focus-within:ring-1 focus-within:ring-blue-600">
+          <label class="absolute -top-2 left-2.5 px-1 bg-white text-[10px] font-semibold text-slate-600">Peso (gr)</label>
+          <input type="number" id="input-peso-edicion" min="0" step="1" placeholder="Ej. 500" autocomplete="off" maxlength="5" class="w-full bg-white text-xs text-slate-800 py-0.5 focus:outline-none">
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Pie del Modal (Fijo abajo siempre visible) -->
+    <div class="flex items-center justify-end gap-2 px-5 py-3 bg-slate-50 border-t border-slate-100 shrink-0">
+      <button type="button" onclick="window.cerrarModalEditarRegistro()" class="px-4 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-200 rounded-xl transition cursor-pointer">
+        Cancelar
+      </button>
+      <button type="button" onclick="window.guardarCambiosEdicionRegistro()" class="px-4 py-1.5 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-xl transition cursor-pointer shadow-sm">
+        Actualizar
+      </button>
+    </div>
+
+  </div>
+</div>

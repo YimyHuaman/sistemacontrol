@@ -1,3 +1,44 @@
+document.addEventListener("keydown", function (event) {
+  // Verificamos si la tecla presionada es ENTER
+  if (event.key === "Enter") {
+    const activo = document.activeElement;
+
+    // Lista exacta de los IDs de los inputs y selects en orden de navegación
+    const idsCampos = [
+      "modalCodigoInput",
+      "input-motivo-descargo",
+      "input-fecha-descargo"
+    ];
+
+    // Comprobamos si el elemento donde estás parado está dentro de la lista
+    const indiceActual = idsCampos.indexOf(activo.id);
+
+    if (indiceActual !== -1) {
+      event.preventDefault(); // Evita envíos accidentales o recargas
+
+      // Si estás en el ÚLTIMO campo de la lista
+      if (indiceActual === idsCampos.length - 1) {
+        // Aquí puedes invocar la función que confirma o procesa todo el formulario (ej: confirmarAccionModal)
+        if (typeof window.confirmarAccionModal === "function") {
+          window.confirmarAccionModal();
+        }
+      } else {
+        // Si estás en campos intermedios, salta automáticamente al siguiente campo
+        const siguienteId = idsCampos[indiceActual + 1];
+        const siguienteElemento = document.getElementById(siguienteId);
+
+        if (siguienteElemento) {
+          siguienteElemento.focus();
+          // Si es un input de texto, seleccionamos el texto para agilizar
+          if (siguienteElemento.tagName === "INPUT" && siguienteElemento.type === "text") {
+            siguienteElemento.select();
+          }
+        }
+      }
+    }
+  }
+});
+
 let gridInstance = null;
 
 // Función auxiliar para convertir fechas de 'YYYY-MM-DD' a 'DD/MM/YYYY'
@@ -95,7 +136,7 @@ async function buscarPendientes() {
 
     // Consulta directa a la vista filtrando por sucursal y estado pendiente (1)
     const { data, error } = await clienteSupabase
-      .from("vw_documentos_detallados")
+      .from("vista_detalles_envios")
       .select("*")
       .eq("sucursal_id", parseInt(sucursalIdLogueada))
       .eq("estado_id", 1);
@@ -152,7 +193,7 @@ async function buscarPorFechas() {
 
     // Consulta a la vista filtrando por sucursal y rango de fechas de ingreso
     const { data, error } = await clienteSupabase
-      .from("vw_documentos_detallados")
+      .from("vista_detalles_envios")
       .select("*")
       .eq("sucursal_id", parseInt(sucursalIdLogueada))
       .gte("fecha_ingreso", fechaDesde + " 00:00:00")
@@ -167,7 +208,7 @@ async function buscarPorFechas() {
   }
 }
 
-function pintarTablaDocumentos(datos) {
+window.pintarTablaDocumentos = function (datos) {
   const contenedor = document.getElementById("wrapper-grid-table-documentos");
   if (!contenedor) return;
 
@@ -181,33 +222,49 @@ function pintarTablaDocumentos(datos) {
 
   contenedor.innerHTML = "";
 
-  const rowsData = datos.map((item) => [
-    item.codigo || "",
-    item.correlativo || "",
-    item.codigo_barras || "",
-    item.doc_emitido || "",
-    item.destinatario || "",
-    item.direccion || "",
-    `${item.departamento || ""} - ${item.provincia || ""} - ${item.distrito || ""}`,
-    item.peso !== null && item.peso !== undefined
-      ? Number(item.peso).toFixed(3)
-      : "0.000",
-    formatearFecha(item.fecha_ingreso),
-    formatearFecha(item.fecha_descargo),
-    formatearFecha(item.fecha_entrega),
-    item.nombre_estado || "",
-  ]);
+  // Mapeo seguro usando los campos exactos de tu vista SQL
+  const rowsData = datos.map((item) => {
+    const itemString = encodeURIComponent(JSON.stringify(item));
 
-  if (gridInstance) {
-    gridInstance.destroy();
-    gridInstance = null;
+    return [
+      item.servicio || "",                  // Corresponde a ts.codigo AS servicio
+      item.hoja_ruta || "",                 // Corresponde a d.hoja_ruta
+      item.codigo_barras || "",
+      item.doc_emitido || "",
+      item.destinatario || "",
+      item.direccion || "",
+      `${item.departamento || ""} - ${item.provincia || ""} - ${item.distrito || ""}`, // Concatenación de ubigeo
+      item.peso !== null && item.peso !== undefined
+        ? Number(item.peso).toFixed(3)
+        : "0.000",
+      formatearFecha(item.fecha_ingreso),
+      formatearFecha(item.fecha_descargo),
+      formatearFecha(item.fecha_entrega),
+      item.nombre_estado || "",
+      // Columna de acciones pasando el objeto completo cifrado
+      gridjs.html(`
+        <div class="flex items-center justify-center">
+          <button type="button" 
+            onclick="window.abrirModalEditarRegistro(JSON.parse(decodeURIComponent('${itemString}')))"
+            class="inline-flex items-center justify-center p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors cursor-pointer" 
+            title="Editar registro">
+            <svg class="w-4 h-4" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+          </button>
+        </div>
+      `)
+    ];
+  });
+
+  if (window.gridInstance) {
+    window.gridInstance.destroy();
+    window.gridInstance = null;
   }
 
-  // Inicializar Grid.js con límite por defecto de 10
-  gridInstance = new gridjs.Grid({
+  // Inicializar Grid.js con las columnas ordenadas
+  window.gridInstance = new gridjs.Grid({
     columns: [
       "Tipo",
-      "Guia",
+      "Hoja Ruta",
       "Código de Barras",
       "Doc Emitido",
       "Destinatario",
@@ -217,7 +274,8 @@ function pintarTablaDocumentos(datos) {
       "F. Ingreso",
       "F. Descargo",
       "F. Entrega",
-      "Motivo",
+      "Estado",
+      "Acciones",
     ],
     data: rowsData,
     pagination: { limit: 10 },
@@ -251,16 +309,16 @@ function pintarTablaDocumentos(datos) {
     },
   });
 
-  gridInstance.render(contenedor);
+  window.gridInstance.render(contenedor);
 
-  // 🔹 Insertar el selector de límite dinámicamente en el footer de la tabla
+  // Inserción del selector de límite dinámicamente
   setTimeout(() => {
     const summaryContainer = contenedor.querySelector(".gridjs-summary");
     if (summaryContainer && !contenedor.querySelector("#select-grid-limit")) {
       const selectHtml = `
         <span class="ml-4 inline-flex items-center gap-1 text-xs text-slate-500">
           Mostrar:
-          <select id="select-grid-limit" class="border border-slate-300 rounded px-1 py-0.5 text-xs bg-white focus:outline-none focus:ring-1 focus:ring-blue-500">
+          <select id="select-grid-limit" class="border border-slate-300 rounded px-1.5 py-0.5 text-xs bg-white focus:outline-none focus:ring-1 focus:ring-blue-500 cursor-pointer">
             <option value="10" selected>10</option>
             <option value="20">20</option>
             <option value="50">50</option>
@@ -271,18 +329,16 @@ function pintarTablaDocumentos(datos) {
       `;
       summaryContainer.insertAdjacentHTML("beforeend", selectHtml);
 
-      // Evento al cambiar la cantidad
       const selectEl = contenedor.querySelector("#select-grid-limit");
       if (selectEl) {
         selectEl.addEventListener("change", (e) => {
           const nuevoLimite = parseInt(e.target.value, 10);
-          gridInstance
+          window.gridInstance
             .updateConfig({
               pagination: { limit: nuevoLimite },
             })
             .forceRender();
 
-          // Mantener el valor seleccionado después de redibujar
           setTimeout(() => {
             const nuevoSelect = contenedor.querySelector("#select-grid-limit");
             if (nuevoSelect) nuevoSelect.value = nuevoLimite;
@@ -291,41 +347,25 @@ function pintarTablaDocumentos(datos) {
       }
     }
   }, 100);
-}
+};
 
 window.inicializarModuloEnvios = inicializarModuloEnvios;
-// Funciones para el Modal de Descargo
-function abrirModalDescargo() {
-  // 1. Mostrar el modal (quitar la clase 'hidden')
-  document.getElementById("modal-descargo").classList.remove("hidden");
-
-  // 2. Cargar los motivos en el select desde Supabase
-  window.cargarMotivoDescarga();
-
-  // 3. Limpiar inputs previos si es necesario
-  document.getElementById("modalCodigoInput").value = "";
-  document.getElementById("lblDestinatario").textContent = "-";
-  document.getElementById("lblDireccion").textContent = "-";
-  document.getElementById("lblUbigeo").textContent = "-";
-  document.getElementById("modalCodigoInput").focus();
-}
-
-function cerrarModalDescargo() {
-  const modal = document.getElementById("modal-descargo");
-  if (modal) modal.classList.add("hidden");
-}
-
 // Funciones para el Modal de Devolución
-function abrirModalDevolucion() {
+window.abrirModalDevolucion = function () {
   const modal = document.getElementById("modal-devolucion");
   if (modal) modal.classList.remove("hidden");
+  
   if (typeof lucide !== "undefined") lucide.createIcons();
-}
 
-function cerrarModalDevolucion() {
-  const modal = document.getElementById("modal-devolucion");
-  if (modal) modal.classList.add("hidden");
-}
+  // 🚀 Enviar el foco automáticamente al campo de código de barras
+  const codigoInput = document.getElementById("input-codigo-barras");
+  if (codigoInput) {
+    codigoInput.value = ""; // Limpia por si quedó algo anterior
+    setTimeout(() => {
+      codigoInput.focus();
+    }, 50);
+  }
+};
 
 window.cargarMotivoDescarga = async function () {
   const selects = document.querySelectorAll(
@@ -373,7 +413,7 @@ window.cargarMotivoDescarga = async function () {
 window.idDocumentoSeleccionado = null;
 
 // 3. Función para abrir el modal limpiando y preparando todo
-function abrirModalDescargo() {
+window.abrirModalDescargo = function () {
   const modal = document.getElementById("modal-descargo");
   if (modal) modal.classList.remove("hidden");
 
@@ -382,7 +422,9 @@ function abrirModalDescargo() {
   }
 
   const codigoInput = document.getElementById("modalCodigoInput");
-  if (codigoInput) codigoInput.value = "";
+  if (codigoInput) {
+    codigoInput.value = "";
+  }
 
   window.idDocumentoSeleccionado = null;
 
@@ -394,8 +436,18 @@ function abrirModalDescargo() {
             <div class="flex items-center gap-1.5"><span class="font-semibold text-slate-600 min-w-[85px]">Ubigeo:</span> <span class="text-slate-400">-</span></div>
         `;
   }
-}
 
+  // 🚀 Enviar el foco automáticamente al campo de código de barras
+  if (codigoInput) {
+    setTimeout(() => {
+      codigoInput.focus();
+    }, 50);
+  }
+};
+function cerrarModalDescargo() {
+  const modal = document.getElementById("modal-descargo");
+  if (modal) modal.classList.add("hidden");
+}
 // ==========================================
 // 4. BUSCAR ENVÍO POR CÓDIGO DE BARRAS
 // ==========================================
@@ -463,7 +515,7 @@ window.buscarEnvioParaDescargo = async function () {
 
       mostrarToast("El envío ya fue descargado anteriormente.", "error");
 
-      // Limpiar input y enfocar para el siguiente escaneo
+      // Limpiar input y enfocar nuevamente para el siguiente escaneo
       if (codigoInput) {
         codigoInput.value = "";
         codigoInput.focus();
@@ -497,6 +549,12 @@ window.buscarEnvioParaDescargo = async function () {
 
     mostrarToast("Búsqueda satisfactoria.", "éxito");
     console.log("✅ Envío válido encontrado:", data);
+
+    // 🚀 SALTO DE FOCO: Si la búsqueda fue exitosa, saltar al selector de Motivo de Descargo
+    const selectMotivo = document.getElementById("input-motivo-descargo");
+    if (selectMotivo) {
+      selectMotivo.focus();
+    }
   } catch (error) {
     console.error("❌ Error al buscar:", error);
     mostrarToast(error.message, "error");
@@ -516,6 +574,21 @@ window.buscarEnvioParaDescargo = async function () {
     }
   }
 };
+
+// ==========================================
+// CONFIGURAR DETECCIÓN AUTOMÁTICA CON LA PISTOLA (ENTER)
+// ==========================================
+document.addEventListener("DOMContentLoaded", () => {
+  const codigoInput = document.getElementById("modalCodigoInput");
+  if (codigoInput) {
+    codigoInput.addEventListener("keydown", (event) => {
+      if (event.key === "Enter") {
+        event.preventDefault(); // Evita recargas o envíos accidentales de formularios
+        window.buscarEnvioParaDescargo(); // Ejecuta la búsqueda automáticamente
+      }
+    });
+  }
+});
 
 // ==========================================
 // CONFIGURAR DETECCIÓN AUTOMÁTICA CON PISTOLA / ENTER
@@ -739,9 +812,9 @@ async function procesarBusquedaYAgregar() {
     // 2. Si el estado_id es igual a 1
     if (data.estado_id === 1) {
       if (typeof mostrarToast === "function") {
-        mostrarToast("El documento debe de descargar y no agregar");
+        mostrarToast("El documento debe ser descargado antes de devolver ");
       } else {
-        alert("El documento debe de descargar y no agregar");
+        alert("El documento debe ser descargado antes de devolverr");
       }
       inputCodigo.value = "";
       inputCodigo.focus();
@@ -962,17 +1035,134 @@ window.guardarDevolucionesTotales = async function () {
     }
   }
 };
-// Evento Enter key
-document.addEventListener("DOMContentLoaded", () => {
-  setTimeout(inicializarGridDevolucion, 100);
 
-  const inputCodigo = document.getElementById("input-codigo-barras");
-  if (inputCodigo) {
-    inputCodigo.addEventListener("keydown", (e) => {
-      if (e.key === "Enter") {
-        e.preventDefault();
-        procesarBusquedaYAgregar();
-      }
-    });
+
+// 1. ABRIR MODAL DE EDICIÓN
+window.abrirModalEditarRegistro = async function (item) {
+  const modal = document.getElementById("modal-editar-registro");
+  if (!modal) {
+    console.error("❌ El modal con id='modal-editar-registro' no se encuentra en el DOM.");
+    return;
   }
-});
+  
+  modal.classList.remove("hidden");
+
+  // 1. Guardar IDs y referencias globales (Aseguramos usar documento_id)
+  window.idDocumentoEdicion = item.documento_id || item.id;
+  window.codigoBarrasEdicion = item.codigo_barras || "";
+
+  // 2. Mostrar el código de barras en la cabecera
+  const lblCodigoBarras = document.getElementById("codigo-barras-editar");
+  if (lblCodigoBarras) {
+    lblCodigoBarras.textContent = item.codigo_barras || "S/N";
+  }
+
+  // 3. Rellenar campos básicos del formulario
+  const inputHojaRuta = document.getElementById("input-hoja-ruta");
+  const inputTipoServicio = document.getElementById("input-tipo-servicio");
+  const inputDocumento = document.getElementById("input-documento");
+  const inputDestinatario = document.getElementById("input-destinatario");
+  const inputDireccion = document.getElementById("input-direccion");
+  const inputPeso = document.getElementById("input-peso");
+
+  if (inputHojaRuta) inputHojaRuta.value = item.correlativo || item.hoja_ruta || "";
+  if (inputTipoServicio) inputTipoServicio.value = item.tipo_servicio_id || "";
+  if (inputDocumento) inputDocumento.value = item.doc_emitido || "";
+  if (inputDestinatario) inputDestinatario.value = item.destinatario || "";
+  if (inputDireccion) inputDireccion.value = item.direccion || "";
+  if (inputPeso) inputPeso.value = item.peso || "";
+
+  // 4. Manejo inteligente de Ubigeos basado en el item de la vista
+  try {
+    const clienteSupabase = window.supabaseClient || window.supabase;
+    
+    // Si tenemos el ubigeo_id, consultamos la tabla ubigeo para obtener la jerarquía exacta (Departamento y Provincia)
+    if (item.ubigeo_id && clienteSupabase) {
+      const { data: ubigeoData, error } = await clienteSupabase
+        .from("ubigeo")
+        .select("id, departamento, provincia, distrito")
+        .eq("id", item.ubigeo_id)
+        .single();
+
+      if (!error && ubigeoData) {
+        // Cargar Departamentos si la función existe y está vacía
+        const selectDep = document.getElementById("input-departamento");
+        if (selectDep && typeof window.cargarDepartamentos === "function" && selectDep.options.length <= 1) {
+          await window.cargarDepartamentos();
+        }
+        
+        // Asignar Departamento y disparar provincias
+        if (selectDep) {
+          selectDep.value = ubigeoData.departamento;
+          if (typeof window.cargarProvincias === "function") {
+            await window.cargarProvincias();
+          }
+        }
+
+        // Asignar Provincia y disparar distritos
+        const selectProv = document.getElementById("input-provincia");
+        if (selectProv) {
+          selectProv.value = ubigeoData.provincia;
+          selectProv.removeAttribute("disabled");
+          if (typeof window.cargarDistritos === "function") {
+            await window.cargarDistritos();
+          }
+        }
+
+        // Asignar el Distrito final (ubigeo_id)
+        const selectDist = document.getElementById("input-distrito");
+        if (selectDist) {
+          selectDist.value = ubigeoData.id;
+          selectDist.removeAttribute("disabled");
+        }
+      }
+    }
+  } catch (err) {
+    console.error("⚠️ Error al sincronizar los selects de ubicación:", err);
+  }
+};
+
+// 2. CERRAR MODAL DE EDICIÓN
+window.cerrarModalEditarRegistro = function () {
+  const modal = document.getElementById("modal-editar-registro");
+  if (modal) {
+    modal.classList.add("hidden");
+  }
+};
+
+
+// 3. ACTUALIZAR ENVÍO (Guardar Cambios)
+window.guardarCambiosEdicionRegistro = async function () {
+  try {
+    // Recolectar los datos modificados de los inputs
+    const datosActualizados = {
+      id: window.idDocumentoEdicion,
+      hoja_ruta: document.getElementById("input-hoja-ruta")?.value || "",
+      tipo_servicio_id: document.getElementById("input-tipo-servicio")?.value || "",
+      doc_emitido: document.getElementById("input-documento")?.value || "",
+      destinatario: document.getElementById("input-destinatario")?.value || "",
+      direccion: document.getElementById("input-direccion")?.value || "",
+      departamento_id: document.getElementById("input-departamento")?.value || "",
+      provincia_id: document.getElementById("input-provincia")?.value || "",
+      ubigeo_id: document.getElementById("input-distrito")?.value || "",
+      peso: document.getElementById("input-peso")?.value || ""
+    };
+
+    console.log("Enviando datos actualizados:", datosActualizados);
+
+    // Aquí realizas tu lógica de actualización (por ejemplo, con Supabase o tu API backend)
+    // Ejemplo:
+    // const { error } = await supabase.from('tu_tabla').update(datosActualizados).eq('id', window.idDocumentoEdicion);
+    // if (error) throw error;
+
+    alert("¡Registro actualizado correctamente!");
+    window.cerrarModalEditarRegistro();
+
+    // Si tienes una función para recargar tu tabla de registros, lágala aquí:
+    // if (typeof window.cargarRegistros === "function") window.cargarRegistros();
+
+  } catch (error) {
+    console.error("❌ Error al actualizar el registro:", error);
+    alert("Hubo un error al guardar los cambios.");
+  }
+};

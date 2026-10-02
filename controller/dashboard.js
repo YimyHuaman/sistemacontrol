@@ -98,6 +98,7 @@ async function cargarSeccion(seccion, elemento) {
             window.datosConsolidadoGlobal = [];
             if (typeof window.listarMotivoDescarga === "function") {
               window.listarMotivoDescarga();
+              window.listarTipoServicio();
             }
             if (typeof window.renderizarGridConsolidado === "function") {
               window.renderizarGridConsolidado(null);

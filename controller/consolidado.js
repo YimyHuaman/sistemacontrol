@@ -1,4 +1,3 @@
-
 // ==========================================
 // 1. LISTAR ESTADOS Y CREAR LOS CHECKBOXES
 // ==========================================
@@ -23,7 +22,6 @@ window.listarMotivoDescarga = async function () {
         const nombreEstado = (estado.nombre_estado || "").trim().toUpperCase();
 
         if (nombreEstado) {
-          // 🚀 CAMBIO CLAVE: Usamos el nombre del estado como value del checkbox
           checkboxesHtml += `
             <label class="inline-flex items-center gap-1.5 text-[11px] text-slate-700 cursor-pointer select-none hover:text-blue-600 transition-colors">
               <input type="checkbox" name="filtro-estado" value="${nombreEstado}" class="rounded border-slate-300 text-blue-600 focus:ring-blue-500 w-3 h-3 cursor-pointer">
@@ -33,7 +31,8 @@ window.listarMotivoDescarga = async function () {
         }
       });
     } else {
-      checkboxesHtml = '<span class="text-[11px] text-slate-400 italic">No hay estados disponibles</span>';
+      checkboxesHtml =
+        '<span class="text-[11px] text-slate-400 italic">No hay estados disponibles</span>';
     }
 
     contenedores.forEach((contenedor) => {
@@ -46,29 +45,99 @@ window.listarMotivoDescarga = async function () {
   }
 };
 
+window.listarTipoServicio = async function () {
+  const contenedores = document.querySelectorAll(
+    "#contenedor-checks-servicios, .contenedor-checks-servicios",
+  );
+
+  if (contenedores.length === 0) return;
+
+  try {
+    // 🔍 CORREGIDO: Consultamos la tabla 'tipo_servicio'
+    const { data: servicios, error } = await window.supabaseClient
+      .from("tipo_servicio")
+      .select("*");
+
+    if (error) throw new Error(error.message);
+
+    let checkboxesHtml = "";
+
+    // 🔍 CORREGIDO: Validamos correctamente la variable 'servicios'
+    if (servicios && servicios.length > 0) {
+      servicios.forEach((item) => {
+        const codigoServicio = (item.codigo || item.nombre || "")
+          .trim()
+          .toUpperCase();
+
+        if (codigoServicio) {
+          checkboxesHtml += `
+  <label class="inline-flex items-center gap-1.5 text-[11px] text-slate-700 cursor-pointer select-none hover:text-blue-600 transition-colors">
+    <input type="checkbox" name="filtro-servicio" value="${codigoServicio}" onchange="filtrarPorEstadoLocal()" class="rounded border-slate-300 text-blue-600 focus:ring-blue-500 w-3 h-3 cursor-pointer">
+    ${codigoServicio}
+  </label>
+`;
+        }
+      });
+    } else {
+      checkboxesHtml =
+        '<span class="text-[11px] text-slate-400 italic">No hay servicios disponibles</span>';
+    }
+
+    contenedores.forEach((contenedor) => {
+      contenedor.innerHTML = checkboxesHtml;
+    });
+
+    console.log("✅ Checkboxes de Servicios listados correctamente.");
+  } catch (error) {
+    console.error("❌ Error al listar los servicios:", error);
+  }
+};
+
 // ==========================================
 // 2. FILTRAR LOCALMENTE SEGÚN LOS CHECKBOXES SELECCIONADOS
 // ==========================================
 window.filtrarPorEstadoLocal = function () {
-  const checkboxesSeleccionados = document.querySelectorAll(
+  // 1. Obtener estados seleccionados
+  const checkboxesEstados = document.querySelectorAll(
     'input[name="filtro-estado"]:checked',
   );
-  
-  // Obtenemos los textos de los estados seleccionados en mayúsculas
-  const estadosSeleccionados = Array.from(checkboxesSeleccionados).map((cb) =>
+  const estadosSeleccionados = Array.from(checkboxesEstados).map((cb) =>
+    String(cb.value).trim().toUpperCase(),
+  );
+
+  // 2. Obtener servicios seleccionados (asegúrate de que tus checkboxes de servicios usen name="filtro-servicio")
+  const checkboxesServicios = document.querySelectorAll(
+    'input[name="filtro-servicio"]:checked',
+  );
+  const serviciosSeleccionados = Array.from(checkboxesServicios).map((cb) =>
     String(cb.value).trim().toUpperCase(),
   );
 
   let datosAVisualizar = window.datosConsolidadoGlobal || [];
 
+  // 3. Filtrar por Estados (si hay alguno seleccionado)
   if (estadosSeleccionados.length > 0) {
     datosAVisualizar = datosAVisualizar.filter((row) => {
-      // Obtenemos el texto del estado que viene en tu vista
-      const estadoFila = String(row.nombre_estado || row.estado || "").trim().toUpperCase();
+      const estadoFila = String(row.nombre_estado || row.estado || "")
+        .trim()
+        .toUpperCase();
       return estadosSeleccionados.includes(estadoFila);
     });
   }
 
+  // 4. Filtrar por Servicios (si hay alguno seleccionado, evaluando 'codigo' u otras propiedades equivalentes)
+  if (serviciosSeleccionados.length > 0) {
+    datosAVisualizar = datosAVisualizar.filter((row) => {
+      const servicioFila = String(
+        row.codigo || row.tipo_servicio_codigo || row.tipo_servicio || "",
+      )
+        .trim()
+        .toUpperCase();
+      return serviciosSeleccionados.includes(servicioFila);
+    });
+  }
+
+  // 5. Renderizar la tabla con los datos filtrados
   if (typeof window.renderizarGridConsolidado === "function") {
     window.renderizarGridConsolidado(datosAVisualizar);
   }
@@ -126,8 +195,6 @@ window.buscarConsolidado = async function () {
   }
 };
 
-
-
 // ==========================================
 // 4. RENDERIZAR LA TABLA DE RESULTADOS EN EL GRID
 // ==========================================
@@ -150,6 +217,7 @@ window.renderizarGridConsolidado = function (data) {
       <table class="w-full text-left border-collapse text-[11px]">
         <thead class="bg-slate-100 text-slate-700 sticky top-0 z-10 border-b border-slate-200">
           <tr>
+            <th class="p-2 border-r border-slate-200">Servicio</th>
             <th class="p-2 border-r border-slate-200">Hoja Ruta</th>
             <th class="p-2 border-r border-slate-200">Doc. Emitido</th>
             <th class="p-2 border-r border-slate-200">Guia Adm.</th>
@@ -189,6 +257,7 @@ window.renderizarGridConsolidado = function (data) {
 
     html += `
       <tr class="hover:bg-slate-50 transition-colors">
+       <td class="p-2 border-r border-slate-200 font-medium text-slate-800">${row.codigo || "-"}</td>
         <td class="p-2 border-r border-slate-200 font-medium text-slate-800">${row.hoja_ruta || "-"}</td>
         <td class="p-2 border-r border-slate-200">${row.doc_emitido || "-"}</td>
         <td class="p-2 border-r border-slate-200 text-blue-600 font-semibold">${row.guia_admision || "-"}</td>
@@ -286,7 +355,8 @@ window.exportarExcelDistribucion = function () {
   const fechaHastaInput = document.getElementById("fecha-hasta").value || "N/A";
 
   // 3. Obtener el nombre de la sucursal de la sesión de manera segura
-  const nombreSucursal = sessionStorage.getItem("sucursal_nombre") || "Sin Sucursal";
+  const nombreSucursal =
+    sessionStorage.getItem("sucursal_nombre") || "Sin Sucursal";
 
   // 4. Preparar los datos limpios para la tabla de Excel (con fechas sin horas)
   const datosMapeados = datos.map((item, index) => ({
