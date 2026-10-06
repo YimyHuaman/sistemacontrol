@@ -130,7 +130,7 @@ function pintarTablaGuias(datos, tipoFiltro) {
       <div class="flex items-center gap-1.5">
         <button onclick="verDetalleGuiaModal('${idGuia}')" title="Ver Listado / Detalles" class="p-1 text-slate-600 hover:text-blue-600 hover:bg-blue-50 rounded transition">
           <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"></path>
+            <path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2.2 2 0 012 2m-6 9l2 2 4-4"></path>
           </svg>
         </button>
     `;
@@ -140,6 +140,14 @@ function pintarTablaGuias(datos, tipoFiltro) {
         <button onclick="imprimirCodigoBarrasGuia('${idGuia}', '${correlativo}')" title="Código de Barras" class="p-1 text-slate-600 hover:text-indigo-600 hover:bg-indigo-50 rounded transition">
           <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" d="M6 4v16M10 4v16M14 4v16M18 4v16"></path>
+          </svg>
+        </button>
+        
+        <!-- NUEVO BOTÓN: Cargo con símbolo de hoja -->
+        <button onclick="imprimirCargoGuia('${idGuia}')" title="Imprimir Cargo" class="p-1 text-slate-600 hover:text-amber-600 hover:bg-amber-50 rounded transition">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path>
+            <path stroke-linecap="round" stroke-linejoin="round" d="M9 9h1m-1 4h6m-6 4h4"></path>
           </svg>
         </button>
       `;
@@ -174,7 +182,6 @@ function pintarTablaGuias(datos, tipoFiltro) {
     pagination: { limit: 10 },
     search: true,
     sort: {
-      // Configuración por defecto para que Grid.js ordene descendentemente por la primera columna (Correlativo) al iniciar
       initial: {
         index: 0,
         direction: 'desc'

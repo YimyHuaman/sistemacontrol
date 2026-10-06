@@ -4,13 +4,13 @@
  * @param {string} texto - Mensaje descriptivo.
  * @param {('success'|'error'|'warning'|'info'|'question')} icono - Tipo de ícono.
  */
-function mostrarAlerta(titulo, texto, icono = 'success') {
+function mostrarAlerta(titulo, texto, icono = "success") {
   return Swal.fire({
     title: titulo,
     text: texto,
     icon: icono,
-    confirmButtonColor: '#2563eb', // Color azul corporativo (Tailwind blue-600)
-    confirmButtonText: 'Aceptar'
+    confirmButtonColor: "#2563eb", // Color azul corporativo (Tailwind blue-600)
+    confirmButtonText: "Aceptar",
   });
 }
 
@@ -22,20 +22,21 @@ function mostrarAlerta(titulo, texto, icono = 'success') {
  */
 async function confirmarAccion(titulo, texto, funcionEjecutar) {
   const resultado = await Swal.fire({
-    title: titulo || '¿Estás seguro?',
-    text: texto || '¡Esta acción no se puede revertir!',
-    icon: 'warning',
+    title: titulo || "¿Estás seguro?",
+    text: texto || "¡Esta acción no se puede revertir!",
+    icon: "warning",
     showCancelButton: true,
-    confirmButtonColor: '#2563eb', // Azul Tailwind
-    cancelButtonColor: '#64748b',  // Gris Tailwind (slate-500)
-    confirmButtonText: 'Sí, confirmar',
-    cancelButtonText: 'Cancelar'
+    confirmButtonColor: "#2563eb", // Azul Tailwind
+    cancelButtonColor: "#64748b", // Gris Tailwind (slate-500)
+    confirmButtonText: "Sí, confirmar",
+    cancelButtonText: "Cancelar",
   });
 
   if (resultado.isConfirmed) {
     // Ejecuta la función que le pases como parámetro (por ejemplo, tu lógica de eliminación)
-    if (typeof funcionEjecutar === 'function') {
+    if (typeof funcionEjecutar === "function") {
       funcionEjecutar();
     }
   }
 }
+

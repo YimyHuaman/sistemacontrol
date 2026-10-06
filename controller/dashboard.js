@@ -251,18 +251,31 @@ if (typeof lucide !== "undefined") {
  * Función global para cerrar sesión de forma limpia
  */
 window.handleLogout = function () {
-  // 1. Borramos el registro del usuario guardado en el navegador
-  localStorage.removeItem("usuario_actual");
+    // 1. Mostrar la ventana de confirmación antes de cerrar sesión
+    confirmarAccion(
+        "¿Cerrar sesión?",
+        "¿Estás seguro de que deseas salir del sistema?",
+        () => {
+            // Acción si el usuario hace clic en "Sí" o confirma
+            
+            // 2. Borramos el registro del usuario guardado en el navegador
+            localStorage.removeItem("usuario_actual");
 
-  // 2. Mostrar toast informativo de cierre de sesión
-  if (typeof window.mostrarToast === "function") {
-    window.mostrarToast("Sesión cerrada correctamente.", "info");
-  }
+            // 3. Mostrar toast informativo de cierre de sesión
+            if (typeof window.mostrarToast === "function") {
+                window.mostrarToast("Sesión cerrada correctamente.", "info");
+            }
 
-  // 3. Volver a la vista del login mediante el objeto SPA
-  if (typeof SPA !== "undefined" && SPA.mostrarLogin) {
-    SPA.mostrarLogin();
-  }
+            // 4. Volver a la vista del login mediante el objeto SPA
+            if (typeof SPA !== "undefined" && SPA.mostrarLogin) {
+                SPA.mostrarLogin();
+            }
+        },
+        () => {
+            // Acción opcional si hace clic en "No" o cancela (mantiene la sesión)
+            console.log("Cierre de sesión cancelado por el usuario.");
+        }
+    );
 };
 function limpiarFormulario() {
   // 1. Limpiar todos los inputs y selects del formulario

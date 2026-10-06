@@ -65,78 +65,71 @@ window.inicializarModuloAdmision = function () {
 };
 
 function cambiarModoOperacion() {
-  // Obtenemos los elementos de los radio buttons
   const radioBarras = document.getElementById("radio-generar-barras");
   const radioExcel = document.getElementById("radio-exportar-excel");
-
-  // Elementos de la sección "Generar Barras"
   const btnGenerarBarras = document.getElementById("btn-generar-barras");
-
-  // Elementos de la sección "Exportar Excel"
-  const fieldsetTipoServicio = document.getElementById(
-    "fieldset-tipo-servicio",
-  );
-  const selectTipoServicio = document.getElementById(
-    "input-tipo-servicio-exportar",
-  );
-
+  const fieldsetTipoServicio = document.getElementById("fieldset-tipo-servicio");
+  const selectTipoServicio = document.getElementById("input-tipo-servicio-exportar");
   const fieldsetGuia = document.getElementById("fieldset-guia");
   const inputSim = document.getElementById("input-sim");
-
   const btnExportarExcel = document.getElementById("btn-exportar-excel");
+
+  // Si no existen los elementos principales en esta vista, salimos para evitar errores
+  if (!radioBarras && !radioExcel) return;
 
   if (radioBarras && radioBarras.checked) {
     // --- MODO 1: GENERAR BARRAS ACTIVO ---
+    if (btnGenerarBarras) {
+      btnGenerarBarras.disabled = false;
+      btnGenerarBarras.classList.remove("opacity-40", "cursor-not-allowed");
+    }
 
-    // 1. Activar botón de barras
-    btnGenerarBarras.disabled = false;
-    btnGenerarBarras.classList.remove("opacity-40", "cursor-not-allowed");
+    if (selectTipoServicio) {
+      selectTipoServicio.value = "";
+      selectTipoServicio.disabled = true;
+    }
 
-    // 2. Desactivar y limpiar campos de Exportar Excel
-    selectTipoServicio.value = "";
-    selectTipoServicio.disabled = true;
+    if (inputSim) {
+      inputSim.value = "";
+      inputSim.disabled = true;
+    }
 
-    inputSim.value = "";
-    inputSim.disabled = true;
+    if (btnExportarExcel) btnExportarExcel.disabled = true;
 
-    btnExportarExcel.disabled = true;
+    if (fieldsetTipoServicio) {
+      fieldsetTipoServicio.classList.add("bg-slate-100", "opacity-60");
+      fieldsetTipoServicio.classList.remove("bg-white", "opacity-100", "border-blue-500", "ring-1", "ring-blue-500");
+    }
 
-    // 3. Aplicar estilos visuales de desactivado (opacidad y fondo) a los fieldsets de Excel
-    fieldsetTipoServicio.classList.add("bg-slate-100", "opacity-60");
-    fieldsetTipoServicio.classList.remove(
-      "bg-white",
-      "opacity-100",
-      "border-blue-500",
-      "ring-1",
-      "ring-blue-500",
-    );
+    if (fieldsetGuia) {
+      fieldsetGuia.classList.add("bg-slate-100", "opacity-60");
+      fieldsetGuia.classList.remove("bg-white", "opacity-100", "border-blue-500", "ring-1", "ring-blue-500");
+    }
 
-    fieldsetGuia.classList.add("bg-slate-100", "opacity-60");
-    fieldsetGuia.classList.remove(
-      "bg-white",
-      "opacity-100",
-      "border-blue-500",
-      "ring-1",
-      "ring-blue-500",
-    );
   } else if (radioExcel && radioExcel.checked) {
     // --- MODO 2: EXPORTAR EXCEL ACTIVO ---
+    if (typeof cargarTiposDeServicio === "function") {
+      cargarTiposDeServicio("input-tipo-servicio-exportar");
+    }
 
-    // 1. Desactivar botón de barras
-    btnGenerarBarras.disabled = true;
-    btnGenerarBarras.classList.add("opacity-40", "cursor-not-allowed");
+    if (btnGenerarBarras) {
+      btnGenerarBarras.disabled = true;
+      btnGenerarBarras.classList.add("opacity-40", "cursor-not-allowed");
+    }
 
-    // 2. Activar campos de Exportar Excel
-    selectTipoServicio.disabled = false;
-    inputSim.disabled = false;
-    btnExportarExcel.disabled = false;
+    if (selectTipoServicio) selectTipoServicio.disabled = false;
+    if (inputSim) inputSim.disabled = false;
+    if (btnExportarExcel) btnExportarExcel.disabled = false;
 
-    // 3. Aplicar estilos visuales de activo a los fieldsets
-    fieldsetTipoServicio.classList.remove("bg-slate-100", "opacity-60");
-    fieldsetTipoServicio.classList.add("bg-white", "opacity-100");
+    if (fieldsetTipoServicio) {
+      fieldsetTipoServicio.classList.remove("bg-slate-100", "opacity-60");
+      fieldsetTipoServicio.classList.add("bg-white", "opacity-100");
+    }
 
-    fieldsetGuia.classList.remove("bg-slate-100", "opacity-60");
-    fieldsetGuia.classList.add("bg-white", "opacity-100");
+    if (fieldsetGuia) {
+      fieldsetGuia.classList.remove("bg-slate-100", "opacity-60");
+      fieldsetGuia.classList.add("bg-white", "opacity-100");
+    }
   }
 }
 
@@ -224,12 +217,13 @@ function abrirModalEnvio() {
 
   // 4. Poblar los selectores del formulario de forma automática
   if (typeof cargarDepartamentos === "function") {
-    cargarDepartamentos();
+    cargarDepartamentos("");
   }
 
   if (typeof cargarTiposDeServicio === "function") {
-    cargarTiposDeServicio();
+    cargarTiposDeServicio("input-tipo-servicio", ""); // ID del select de tipo servicio
   }
+
   // 5. 🎯 ENFOQUE AUTOMÁTICO EN EL INPUT DE HOJA DE RUTA
   setTimeout(() => {
     const inputHojaRuta = document.getElementById("input-hoja-ruta");
@@ -839,136 +833,102 @@ async function guardarGuiaYDocumentosDefinitivo() {
 // Asignamos la función de manera global si es necesario
 window.guardarGuiaYDocumentosDefinitivo = guardarGuiaYDocumentosDefinitivo;
 
-async function cargarDepartamentos() {
-  // Captura el elemento select de departamentos en el DOM
-  const selectDep = document.getElementById("input-departamento");
-  // Captura el elemento select de provincias en el DOM
-  const selectProv = document.getElementById("input-provincia");
-  // Captura el elemento select de distritos en el DOM
-  const selectDist = document.getElementById("input-distrito");
+// --- CARGAR DEPARTAMENTOS (Reutilizable) ---
+window.cargarDepartamentos = async function (sufijo = "") {
+  const selectDep = document.getElementById(`input-departamento${sufijo}`);
+  const selectProv = document.getElementById(`input-provincia${sufijo}`);
+  const selectDist = document.getElementById(`input-distrito${sufijo}`);
 
-  // Si el selector de departamentos no existe físicamente, detiene la ejecución
   if (!selectDep) return;
 
-  // 1. Resetea los campos dependientes de forma segura (ya sea con Tom Select o de forma nativa)
-  if (typeof selectProvInstance !== "undefined") {
-    selectProvInstance.clear();
-    selectProvInstance.clearOptions();
-    selectProvInstance.disable();
-  } else if (selectProv) {
+  // Resetear dependientes
+  if (selectProv) {
     selectProv.innerHTML = '<option value="">Seleccione...</option>';
     selectProv.disabled = true;
   }
-
-  if (typeof selectDistInstance !== "undefined") {
-    selectDistInstance.clear();
-    selectDistInstance.clearOptions();
-    selectDistInstance.disable();
-  } else if (selectDist) {
+  if (selectDist) {
     selectDist.innerHTML = '<option value="">Seleccione...</option>';
     selectDist.disabled = true;
   }
 
   try {
-    // 2. Realiza la llamada a la función RPC de Supabase para obtener los departamentos
     const { data, error } =
       await window.supabaseClient.rpc("get_departamentos");
-
-    // Si Supabase devuelve un error en la ejecución RPC, lanza una excepción
     if (error) throw new Error(error.message);
 
-    // 3. Filtra la data obtenida para asegurar que sean elementos únicos utilizando un Set
     const departamentosUnicos = [...new Set(data)];
-
-    // 4. Llena el select evaluando si utiliza Tom Select o si emplea el respaldo HTML nativo
-    if (typeof selectDepInstance !== "undefined") {
-      selectDepInstance.clearOptions();
-      departamentosUnicos.forEach((dep) => {
-        // Asegura que el texto y el valor estén siempre en mayúsculas y limpios de espacios
-        const depMayus = String(dep).trim().toUpperCase();
-        selectDepInstance.addOption({ value: depMayus, text: depMayus });
-      });
-      selectDepInstance.refreshOptions();
-    } else {
-      // Respaldo nativo de HTML por si no está activa la librería Tom Select
-      let html = '<option value="">Seleccione...</option>';
-      departamentosUnicos.forEach((dep) => {
-        const depMayus = String(dep).trim().toUpperCase();
-        html += `<option value="${depMayus}">${depMayus}</option>`;
-      });
-      selectDep.innerHTML = html;
-    }
+    let html = '<option value="">Seleccione...</option>';
+    departamentosUnicos.forEach((dep) => {
+      const depMayus = String(dep).trim().toUpperCase();
+      html += `<option value="${depMayus}">${depMayus}</option>`;
+    });
+    selectDep.innerHTML = html;
+    selectDep.disabled = false;
   } catch (err) {
-    // Captura y muestra en consola cualquier error ocurrido al cargar los departamentos
     console.error("Error al cargar departamentos:", err);
   }
-}
+};
 
-async function cargarProvincias() {
-  // Captura los elementos select del formulario de ubicación
-  const selectDep = document.getElementById("input-departamento");
-  const selectProv = document.getElementById("input-provincia");
-  const selectDist = document.getElementById("input-distrito");
+// --- CARGAR PROVINCIAS (Reutilizable) ---
+window.cargarProvincias = async function (sufijo = "") {
+  const selectDep = document.getElementById(`input-departamento${sufijo}`);
+  const selectProv = document.getElementById(`input-provincia${sufijo}`);
+  const selectDist = document.getElementById(`input-distrito${sufijo}`);
 
-  // Obtiene el valor actual del departamento seleccionado en el DOM
-  const departamentoSeleccionado = selectDep.value;
+  const departamentoSeleccionado = selectDep ? selectDep.value : "";
 
-  // Restablece y deshabilita el selector de provincias preventivamente
-  selectProv.innerHTML = '<option value="">Seleccione...</option>';
-  selectProv.disabled = true;
-  // Restablece y deshabilita el selector de distritos preventivamente
-  selectDist.innerHTML = '<option value="">Seleccione...</option>';
-  selectDist.disabled = true;
+  if (selectProv) {
+    selectProv.innerHTML = '<option value="">Seleccione...</option>';
+    selectProv.disabled = true;
+  }
+  if (selectDist) {
+    selectDist.innerHTML = '<option value="">Seleccione...</option>';
+    selectDist.disabled = true;
+  }
 
-  // Si no hay ningún departamento seleccionado, interrumpe el proceso de inmediato
   if (!departamentoSeleccionado) return;
 
   try {
-    // Consulta a la tabla 'ubigeo' de Supabase filtrando estrictamente por el departamento elegido
     const { data, error } = await window.supabaseClient
       .from("ubigeo")
       .select("provincia")
       .eq("departamento", departamentoSeleccionado)
       .order("provincia", { ascending: true });
 
-    // Si ocurre un error en la consulta a la base de datos, lanza una excepción
     if (error) throw new Error(error.message);
 
-    // Filtra el resultado para extraer una lista única de provincias
     const provinciasUnicas = [...new Set(data.map((item) => item.provincia))];
-
-    // Construye las opciones en formato HTML para el select nativo de provincias
     let html = '<option value="">Seleccione...</option>';
     provinciasUnicas.forEach((prov) => {
       html += `<option value="${prov}">${prov}</option>`;
     });
-    selectProv.innerHTML = html;
-    selectProv.disabled = false; // Habilita el selector de provincias para el usuario
+
+    if (selectProv) {
+      selectProv.innerHTML = html;
+      selectProv.disabled = false;
+    }
   } catch (err) {
-    // Muestra en consola un mensaje de error si la carga de provincias falla
     console.error("Error al cargar provincias:", err);
   }
-}
+};
 
-async function cargarDistritos() {
-  // Captura los tres elementos select de la jerarquía geográfica
-  const selectDep = document.getElementById("input-departamento");
-  const selectProv = document.getElementById("input-provincia");
-  const selectDist = document.getElementById("input-distrito");
+// --- CARGAR DISTRITOS (Reutilizable) ---
+window.cargarDistritos = async function (sufijo = "") {
+  const selectDep = document.getElementById(`input-departamento${sufijo}`);
+  const selectProv = document.getElementById(`input-provincia${sufijo}`);
+  const selectDist = document.getElementById(`input-distrito${sufijo}`);
 
-  // Obtiene los valores seleccionados tanto de departamento como de provincia
-  const departamentoSeleccionado = selectDep.value;
-  const provinciaSeleccionada = selectProv.value;
+  const departamentoSeleccionado = selectDep ? selectDep.value : "";
+  const provinciaSeleccionada = selectProv ? selectProv.value : "";
 
-  // Restablece y deshabilita el selector de distritos preventivamente
-  selectDist.innerHTML = '<option value="">Seleccione...</option>';
-  selectDist.disabled = true;
+  if (selectDist) {
+    selectDist.innerHTML = '<option value="">Seleccione...</option>';
+    selectDist.disabled = true;
+  }
 
-  // Si no hay ninguna provincia seleccionada, detiene la ejecución
   if (!provinciaSeleccionada) return;
 
   try {
-    // Trae tanto el ID como el nombre del distrito filtrando por depto y provincia en Supabase
     const { data, error } = await window.supabaseClient
       .from("ubigeo")
       .select("id, distrito")
@@ -976,29 +936,29 @@ async function cargarDistritos() {
       .eq("provincia", provinciaSeleccionada)
       .order("distrito", { ascending: true });
 
-    // Si ocurre un error en la consulta, lanza una excepción
     if (error) throw new Error(error.message);
 
     let html = '<option value="">Seleccione...</option>';
     data.forEach((item) => {
-      // ⭐ AQUÍ ESTÁ LA CLAVE: El value del option es el ID numérico real (ej. 45) y lo visible es el nombre del distrito
       html += `<option value="${item.id}">${item.distrito}</option>`;
     });
-    selectDist.innerHTML = html;
-    selectDist.disabled = false; // Habilita el selector de distritos para el usuario
+
+    if (selectDist) {
+      selectDist.innerHTML = html;
+      selectDist.disabled = false;
+    }
   } catch (err) {
-    // Muestra errores en consola si falla la consulta de distritos
     console.error("Error al cargar distritos:", err);
   }
-}
+};
 
-window.cargarTiposDeServicio = async function () {
-  // Busca elementos con CUALQUIERA de las dos clases
-  const selects = document.querySelectorAll(
-    ".select-tipo-servicio-update, .select-tipo-servicio",
-  );
-
-  if (selects.length === 0) return;
+// --- CARGAR TIPOS DE SERVICIO (Reutilizable) ---
+window.cargarTiposDeServicio = async function (
+  elementId = "input-tipo-servicio",
+  valorSeleccionado = "",
+) {
+  const select = document.getElementById(elementId);
+  if (!select) return;
 
   try {
     const { data: servicios, error } = await window.supabaseClient
@@ -1020,14 +980,16 @@ window.cargarTiposDeServicio = async function () {
       });
     }
 
-    selects.forEach((select) => {
-      select.innerHTML = opcionesHtml;
-      select.disabled = false;
-    });
+    select.innerHTML = opcionesHtml;
+    select.value = valorSeleccionado;
+    select.disabled = false;
 
-    console.log("✅ Tipos de servicio cargados correctamente.");
+    console.log(`✅ Tipos de servicio cargados en #${elementId}`);
   } catch (error) {
-    console.error("❌ Error al cargar tipos de servicio:", error);
+    console.error(
+      `❌ Error al cargar tipos de servicio en #${elementId}:`,
+      error,
+    );
   }
 };
 
@@ -1107,7 +1069,11 @@ window.listarEnviosDiarios = async function () {
     let totalSen = 0;
 
     datosFiltrados.forEach((item) => {
-      const servicio = (item.tipo_servicio_codigo || item.codigo || "").toUpperCase();
+      const servicio = (
+        item.tipo_servicio_codigo ||
+        item.codigo ||
+        ""
+      ).toUpperCase();
       if (servicio === "SEL") {
         totalSel++;
       } else if (servicio === "SEN") {
@@ -1773,4 +1739,3 @@ function descargarExcelSinBordes(data, nombreArchivo) {
   document.body.removeChild(a);
   URL.revokeObjectURL(url);
 }
-

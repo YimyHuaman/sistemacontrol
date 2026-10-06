@@ -7,7 +7,7 @@ document.addEventListener("keydown", function (event) {
     const idsCampos = [
       "modalCodigoInput",
       "input-motivo-descargo",
-      "input-fecha-descargo"
+      "input-fecha-descargo",
     ];
 
     // Comprobamos si el elemento donde estás parado está dentro de la lista
@@ -30,7 +30,10 @@ document.addEventListener("keydown", function (event) {
         if (siguienteElemento) {
           siguienteElemento.focus();
           // Si es un input de texto, seleccionamos el texto para agilizar
-          if (siguienteElemento.tagName === "INPUT" && siguienteElemento.type === "text") {
+          if (
+            siguienteElemento.tagName === "INPUT" &&
+            siguienteElemento.type === "text"
+          ) {
             siguienteElemento.select();
           }
         }
@@ -227,8 +230,8 @@ window.pintarTablaDocumentos = function (datos) {
     const itemString = encodeURIComponent(JSON.stringify(item));
 
     return [
-      item.servicio || "",                  // Corresponde a ts.codigo AS servicio
-      item.hoja_ruta || "",                 // Corresponde a d.hoja_ruta
+      item.servicio || "", // Corresponde a ts.codigo AS servicio
+      item.hoja_ruta || "", // Corresponde a d.hoja_ruta
       item.codigo_barras || "",
       item.doc_emitido || "",
       item.destinatario || "",
@@ -251,7 +254,7 @@ window.pintarTablaDocumentos = function (datos) {
             <svg class="w-4 h-4" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
           </button>
         </div>
-      `)
+      `),
     ];
   });
 
@@ -354,7 +357,7 @@ window.inicializarModuloEnvios = inicializarModuloEnvios;
 window.abrirModalDevolucion = function () {
   const modal = document.getElementById("modal-devolucion");
   if (modal) modal.classList.remove("hidden");
-  
+
   if (typeof lucide !== "undefined") lucide.createIcons();
 
   // 🚀 Enviar el foco automáticamente al campo de código de barras
@@ -1036,133 +1039,293 @@ window.guardarDevolucionesTotales = async function () {
   }
 };
 
+/* ============================================================
+   ABRIR MODAL EDITAR REGISTRO
+============================================================ */
+let itemActualEnEdicion = null;
 
-// 1. ABRIR MODAL DE EDICIÓN
-window.abrirModalEditarRegistro = async function (item) {
+window.abrirModalEditarRegistro = function (item) {
+  console.log("Abriendo modal de edición para:", item);
+
+  // 🎯 Guardamos el objeto completo en la variable global para acceder a su ID y demás datos
+  itemActualEnEdicion = item;
+
   const modal = document.getElementById("modal-editar-registro");
   if (!modal) {
-    console.error("❌ El modal con id='modal-editar-registro' no se encuentra en el DOM.");
+    console.error(
+      "❌ No se encontró el elemento #modal-editar-registro en el DOM",
+    );
     return;
   }
-  
-  modal.classList.remove("hidden");
 
-  // 1. Guardar IDs y referencias globales (Aseguramos usar documento_id)
-  window.idDocumentoEdicion = item.documento_id || item.id;
-  window.codigoBarrasEdicion = item.codigo_barras || "";
-
-  // 2. Mostrar el código de barras en la cabecera
-  const lblCodigoBarras = document.getElementById("codigo-barras-editar");
-  if (lblCodigoBarras) {
-    lblCodigoBarras.textContent = item.codigo_barras || "S/N";
+  // 1. Rellenar el código de barras en la cabecera
+  const spanCodigo = document.getElementById("codigo-barras-editar");
+  if (spanCodigo) {
+    spanCodigo.textContent = item.codigo_barras || item.id || "---";
   }
 
-  // 3. Rellenar campos básicos del formulario
-  const inputHojaRuta = document.getElementById("input-hoja-ruta");
-  const inputTipoServicio = document.getElementById("input-tipo-servicio");
-  const inputDocumento = document.getElementById("input-documento");
-  const inputDestinatario = document.getElementById("input-destinatario");
-  const inputDireccion = document.getElementById("input-direccion");
-  const inputPeso = document.getElementById("input-peso");
+  // 2. Rellenar los campos básicos del formulario
+  const campos = {
+    "input-hoja-ruta-edicion": item.hoja_ruta || "",
+    "input-documento-edicion": item.doc_emitido || item.documento || "",
+    "input-destinatario-edicion": item.destinatario || "",
+    "input-direccion-edicion": item.direccion || "",
+    "input-peso-edicion": item.peso || "",
+  };
 
-  if (inputHojaRuta) inputHojaRuta.value = item.correlativo || item.hoja_ruta || "";
-  if (inputTipoServicio) inputTipoServicio.value = item.tipo_servicio_id || "";
-  if (inputDocumento) inputDocumento.value = item.doc_emitido || "";
-  if (inputDestinatario) inputDestinatario.value = item.destinatario || "";
-  if (inputDireccion) inputDireccion.value = item.direccion || "";
-  if (inputPeso) inputPeso.value = item.peso || "";
+  for (const [id, valor] of Object.entries(campos)) {
+    const elemento = document.getElementById(id);
+    if (elemento) elemento.value = valor;
+  }
 
-  // 4. Manejo inteligente de Ubigeos basado en el item de la vista
-  try {
-    const clienteSupabase = window.supabaseClient || window.supabase;
-    
-    // Si tenemos el ubigeo_id, consultamos la tabla ubigeo para obtener la jerarquía exacta (Departamento y Provincia)
-    if (item.ubigeo_id && clienteSupabase) {
-      const { data: ubigeoData, error } = await clienteSupabase
-        .from("ubigeo")
-        .select("id, departamento, provincia, distrito")
-        .eq("id", item.ubigeo_id)
-        .single();
+  // 🎯 2.1 CARGAR EL TIPO DE SERVICIO REUTILIZANDO TU FUNCIÓN
+  if (typeof cargarTiposDeServicio === "function") {
+    const valorServicio =
+      item.tipo_servicio_id || item.tipo_servicio || item.servicio || "";
+    cargarTiposDeServicio("input-tipo-servicio-edicion", valorServicio);
+  }
 
-      if (!error && ubigeoData) {
-        // Cargar Departamentos si la función existe y está vacía
-        const selectDep = document.getElementById("input-departamento");
-        if (selectDep && typeof window.cargarDepartamentos === "function" && selectDep.options.length <= 1) {
-          await window.cargarDepartamentos();
-        }
-        
-        // Asignar Departamento y disparar provincias
-        if (selectDep) {
-          selectDep.value = ubigeoData.departamento;
-          if (typeof window.cargarProvincias === "function") {
-            await window.cargarProvincias();
-          }
-        }
+  // 3. Mostrar el Ubigeo actual fijo al abrir (Departamento, Provincia, Distrito)
+  const inputDepartamento = document.getElementById(
+    "input-departamento-edicion",
+  );
+  const inputProvincia = document.getElementById("input-provincia-edicion");
+  const inputDistrito = document.getElementById("input-distrito-edicion");
 
-        // Asignar Provincia y disparar distritos
-        const selectProv = document.getElementById("input-provincia");
-        if (selectProv) {
-          selectProv.value = ubigeoData.provincia;
-          selectProv.removeAttribute("disabled");
-          if (typeof window.cargarDistritos === "function") {
-            await window.cargarDistritos();
-          }
-        }
+  if (inputDepartamento) {
+    inputDepartamento.innerHTML = `<option value="${item.departamento_id || item.departamento || ""}">${item.departamento || "Seleccione..."}</option>`;
+    inputDepartamento.value = item.departamento_id || item.departamento || "";
+  }
 
-        // Asignar el Distrito final (ubigeo_id)
-        const selectDist = document.getElementById("input-distrito");
-        if (selectDist) {
-          selectDist.value = ubigeoData.id;
-          selectDist.removeAttribute("disabled");
-        }
+  if (inputProvincia) {
+    inputProvincia.innerHTML = `<option value="${item.provincia_id || item.provincia || ""}">${item.provincia || "Seleccione..."}</option>`;
+    inputProvincia.value = item.provincia_id || item.provincia || "";
+  }
+
+  if (inputDistrito) {
+    inputDistrito.innerHTML = `<option value="${item.ubigeo_id || item.ubigeo || item.distrito_id || ""}">${item.distrito || item.ubigeo_nombre || "Seleccione..."}</option>`;
+    inputDistrito.value =
+      item.ubigeo_id || item.ubigeo || item.distrito_id || "";
+  }
+
+  // 4. Asegurar que al abrir el modal el checkbox esté inactivo y los selects bloqueados
+  const checkUbicacion = document.getElementById("check-editar-ubicacion");
+  if (checkUbicacion) {
+    checkUbicacion.checked = false;
+    window.toggleUbicacionEdicion(checkUbicacion);
+  }
+
+  // 5. Mostrar el modal y bloquear el scroll de fondo
+  modal.classList.remove("hidden");
+  modal.classList.add("flex");
+  document.body.classList.remove("overflow-hidden");
+};
+
+// Función para controlar la activación del Checkbox de Ubigeo
+window.toggleUbicacionEdicion = function (checkbox) {
+  const deptSelect = document.getElementById("input-departamento-edicion");
+  const provSelect = document.getElementById("input-provincia-edicion");
+  const distSelect = document.getElementById("input-distrito-edicion");
+
+  const isEnabled = checkbox.checked;
+
+  if (isEnabled) {
+    // 1. Habilitar departamento
+    if (deptSelect) {
+      deptSelect.disabled = false;
+      deptSelect.value = ""; // Limpiamos selección anterior para obligar a elegir
+    }
+
+    // 2. Bloquear y resetear provincia y distrito
+    if (provSelect) {
+      provSelect.innerHTML = '<option value="">Seleccione...</option>';
+      provSelect.disabled = true;
+    }
+    if (distSelect) {
+      distSelect.innerHTML = '<option value="">Seleccione...</option>';
+      distSelect.disabled = true;
+    }
+
+    // 3. 🎯 CARGAR TODOS LOS DEPARTAMENTOS DESDE SUPABASE
+    if (typeof window.cargarDepartamentos === "function") {
+      window.cargarDepartamentos("-edicion");
+    }
+  } else {
+    // Si se desmarca, restauramos los datos originales del envío
+    if (itemActualEnEdicion) {
+      if (deptSelect) {
+        deptSelect.innerHTML = `<option value="${itemActualEnEdicion.departamento_id || itemActualEnEdicion.departamento || ""}">${itemActualEnEdicion.departamento || ""}</option>`;
+        deptSelect.value =
+          itemActualEnEdicion.departamento_id ||
+          itemActualEnEdicion.departamento ||
+          "";
+        deptSelect.disabled = true;
+      }
+      if (provSelect) {
+        provSelect.innerHTML = `<option value="${itemActualEnEdicion.provincia_id || itemActualEnEdicion.provincia || ""}">${itemActualEnEdicion.provincia || ""}</option>`;
+        provSelect.value =
+          itemActualEnEdicion.provincia_id ||
+          itemActualEnEdicion.provincia ||
+          "";
+        provSelect.disabled = true;
+      }
+      if (distSelect) {
+        distSelect.innerHTML = `<option value="${itemActualEnEdicion.ubigeo || itemActualEnEdicion.distrito_id || ""}">${itemActualEnEdicion.distrito || itemActualEnEdicion.ubigeo_nombre || ""}</option>`;
+        distSelect.value =
+          itemActualEnEdicion.ubigeo || itemActualEnEdicion.distrito_id || "";
+        distSelect.disabled = true;
       }
     }
-  } catch (err) {
-    console.error("⚠️ Error al sincronizar los selects de ubicación:", err);
   }
 };
 
-// 2. CERRAR MODAL DE EDICIÓN
+// Función para guardar cambios (puedes adaptarla a tu endpoint)
+window.guardarCambiosEdicionRegistro = async function () {
+  if (!itemActualEnEdicion) {
+    console.error("❌ No hay ningún ítem en edición.");
+    alert("Error: No se encontró el registro a editar.");
+    return;
+  }
+
+  // 🎯 Capturamos correctamente el ID usando 'documento_id' que es como viene en tu objeto
+  const idRegistro = itemActualEnEdicion.documento_id || itemActualEnEdicion.id;
+
+  if (!idRegistro) {
+    alert("El registro actual no cuenta con un ID válido.");
+    return;
+  }
+
+  // 1. Obtener los valores actualizados de los inputs del modal
+  const hojaRuta =
+    document.getElementById("input-hoja-ruta-edicion")?.value.trim() || "";
+  const tipoServicio =
+    document.getElementById("input-tipo-servicio-edicion")?.value || "";
+  const documentoEm =
+    document.getElementById("input-documento-edicion")?.value.trim() || "";
+  const destinatario =
+    document.getElementById("input-destinatario-edicion")?.value.trim() || "";
+  const direccion =
+    document.getElementById("input-direccion-edicion")?.value.trim() || "";
+  const peso =
+    parseFloat(document.getElementById("input-peso-edicion")?.value) || 0;
+
+  // 2. Validaciones básicas obligatorias
+  if (!hojaRuta) {
+    if (window.mostrarToast)
+      window.mostrarToast("La hoja de ruta es obligatoria.", "error");
+    document.getElementById("input-hoja-ruta-edicion")?.focus();
+    return;
+  }
+
+  if (!tipoServicio) {
+    if (window.mostrarToast)
+      window.mostrarToast("Debes seleccionar un tipo de servicio.", "error");
+    document.getElementById("input-tipo-servicio-edicion")?.focus();
+    return;
+  }
+
+  // 3. Manejar el Ubigeo según el estado del Checkbox de edición
+  const checkUbicacion = document.getElementById("check-editar-ubicacion");
+  let ubigeoFinal =
+    itemActualEnEdicion.ubigeo_id || itemActualEnEdicion.ubigeo || "";
+
+  if (checkUbicacion && checkUbicacion.checked) {
+    const selectDistrito = document.getElementById("input-distrito-edicion");
+    ubigeoFinal = selectDistrito ? selectDistrito.value : "";
+
+    if (!ubigeoFinal) {
+      if (window.mostrarToast) {
+        window.mostrarToast(
+          "Has activado la actualización de ubicación. Por favor, selecciona un departamento, provincia y distrito válidos.",
+          "error",
+        );
+      }
+      return;
+    }
+  }
+
+  // 4. Construir el objeto con los campos exactos para Supabase
+  const datosActualizados = {
+    tipo_servicio_id: tipoServicio,
+    doc_emitido: documentoEm,
+    destinatario: destinatario,
+    direccion: direccion,
+    ubigeo_id: ubigeoFinal,
+    peso: peso,
+    hoja_ruta: hojaRuta,
+  };
+
+  // 5. Confirmar la acción antes de ejecutar el update en la base de datos
+  confirmarAccion(
+    "¿Estás seguro?",
+    "¿Estás seguro de que deseas actualizar los datos?",
+    async () => {
+      try {
+        console.log(
+          "Enviando actualización a Supabase para el ID:",
+          idRegistro,
+          datosActualizados,
+        );
+
+        // 🎯 EJECUTAR EL UPDATE EN LA TABLA "documento"
+        const { data, error } = await window.supabaseClient
+          .from("documento")
+          .update(datosActualizados)
+          .eq("id", idRegistro);
+
+        if (error) {
+          throw new Error(error.message);
+        }
+
+        console.log(
+          "✅ Registro actualizado correctamente en la base de datos:",
+          data,
+        );
+
+        if (window.mostrarToast) {
+          window.mostrarToast("¡Cambios guardados con éxito!", "success");
+        }
+
+        // Cerrar el modal de edición y limpiar la vista
+        const modal = document.getElementById("modal-editar-registro");
+        if (modal) {
+          modal.classList.add("hidden");
+          modal.classList.remove("flex");
+          document.body.classList.remove("overflow-hidden");
+        }
+
+        // 🔄 Refrescar todas las tablas/listas posibles de la interfaz
+        if (typeof window.pintarTablaDocumentos === "function") {
+          window.pintarTablaDocumentos();
+        }
+        if (typeof window.buscarPendientes === "function") {
+          await window.buscarPendientes();
+        }
+        if (typeof window.cargarRegistros === "function") {
+          window.cargarRegistros();
+        }
+        if (typeof window.buscarEnvios === "function") {
+          window.buscarEnvios();
+        }
+        if (typeof window.listarEnviosDiarios === "function") {
+          window.listarEnviosDiarios();
+        }
+
+      } catch (err) {
+        console.error("❌ Error al actualizar el registro:", err);
+        alert(
+          "Ocurrió un error al guardar en la base de datos: " + err.message,
+        );
+      }
+    },
+  );
+};
+
 window.cerrarModalEditarRegistro = function () {
   const modal = document.getElementById("modal-editar-registro");
   if (modal) {
     modal.classList.add("hidden");
-  }
-};
-
-
-// 3. ACTUALIZAR ENVÍO (Guardar Cambios)
-window.guardarCambiosEdicionRegistro = async function () {
-  try {
-    // Recolectar los datos modificados de los inputs
-    const datosActualizados = {
-      id: window.idDocumentoEdicion,
-      hoja_ruta: document.getElementById("input-hoja-ruta")?.value || "",
-      tipo_servicio_id: document.getElementById("input-tipo-servicio")?.value || "",
-      doc_emitido: document.getElementById("input-documento")?.value || "",
-      destinatario: document.getElementById("input-destinatario")?.value || "",
-      direccion: document.getElementById("input-direccion")?.value || "",
-      departamento_id: document.getElementById("input-departamento")?.value || "",
-      provincia_id: document.getElementById("input-provincia")?.value || "",
-      ubigeo_id: document.getElementById("input-distrito")?.value || "",
-      peso: document.getElementById("input-peso")?.value || ""
-    };
-
-    console.log("Enviando datos actualizados:", datosActualizados);
-
-    // Aquí realizas tu lógica de actualización (por ejemplo, con Supabase o tu API backend)
-    // Ejemplo:
-    // const { error } = await supabase.from('tu_tabla').update(datosActualizados).eq('id', window.idDocumentoEdicion);
-    // if (error) throw error;
-
-    alert("¡Registro actualizado correctamente!");
-    window.cerrarModalEditarRegistro();
-
-    // Si tienes una función para recargar tu tabla de registros, lágala aquí:
-    // if (typeof window.cargarRegistros === "function") window.cargarRegistros();
-
-  } catch (error) {
-    console.error("❌ Error al actualizar el registro:", error);
-    alert("Hubo un error al guardar los cambios.");
+    modal.classList.remove("flex");
+    document.body.classList.remove("overflow-hidden");
   }
 };

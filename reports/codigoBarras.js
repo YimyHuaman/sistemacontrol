@@ -1,5 +1,3 @@
-// Archivo: reports/codigoBarras.js
-
 function generarCodigoBarrasBase64(texto, esDobleColumna = false) {
   return new Promise((resolve) => {
     try {
@@ -33,52 +31,26 @@ function generarCodigoBarrasBase64(texto, esDobleColumna = false) {
 }
 
 function mostrarModalSeleccionColumnas() {
-  return new Promise((resolve) => {
-    const modalExistente = document.getElementById("modal-columnas-impresora");
-    if (modalExistente) modalExistente.remove();
-
-    const overlay = document.createElement("div");
-    overlay.id = "modal-columnas-impresora";
-    overlay.style.cssText = `
-      position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-      background: rgba(15, 23, 42, 0.55); backdrop-filter: blur(4px);
-      display: flex; justify-content: center; align-items: center; z-index: 10000;
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-    `;
-
-    const caja = document.createElement("div");
-    caja.style.cssText = `
-      background: #ffffff; padding: 28px 32px; border-radius: 16px;
-      box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
-      text-align: center; max-width: 360px; width: 90%;
-    `;
-
-    caja.innerHTML = `
-      <div style="width: 50px; height: 50px; background: #e0f2fe; color: #0284c7; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 14px auto; font-size: 22px;">🏷️</div>
-      <h3 style="margin: 0 0 6px 0; color: #0f172a; font-size: 18px; font-weight: 700;">Seleccionar Formato</h3>
-      <p style="color: #64748b; font-size: 13px; margin: 0 0 22px 0; line-height: 1.4;">Elige el diseño de tus etiquetas térmicas:</p>
-      <div style="display: flex; flex-direction: column; gap: 10px;">
-        <button id="btn-col-1" style="width: 100%; padding: 12px; background: #2563eb; color: white; border: none; border-radius: 8px; font-weight: 600; font-size: 13px; cursor: pointer;">1 Columna (7.5 x 2.5 cm)</button>
-        <button id="btn-col-2" style="width: 100%; padding: 12px; background: #059669; color: white; border: none; border-radius: 8px; font-weight: 600; font-size: 13px; cursor: pointer;">2 Columnas (11cm total: 5cm c/u)</button>
-      </div>
-      <button id="btn-col-cancelar" style="margin-top: 16px; background: transparent; border: none; color: #94a3b8; cursor: pointer; font-size: 12px; font-weight: 500;">Cancelar</button>
-    `;
-
-    overlay.appendChild(caja);
-    document.body.appendChild(overlay);
-
-    document.getElementById("btn-col-1").onclick = () => {
-      overlay.remove();
-      resolve(1);
-    };
-    document.getElementById("btn-col-2").onclick = () => {
-      overlay.remove();
-      resolve(2);
-    };
-    document.getElementById("btn-col-cancelar").onclick = () => {
-      overlay.remove();
-      resolve(null);
-    };
+  return Swal.fire({
+    title: 'Seleccionar Formato',
+    text: 'Elige el diseño de tus etiquetas térmicas:',
+    icon: 'question',
+    showDenyButton: true,
+    showCancelButton: true,
+    confirmButtonText: '1 Columna (7.5 x 2.5 cm)',
+    denyButtonText: '2 Columnas (11 cm)',
+    cancelButtonText: 'Cancelar',
+    confirmButtonColor: '#2563eb',
+    denyButtonColor: '#059669',
+    cancelButtonColor: '#64748b'
+  }).then((resultado) => {
+    if (resultado.isConfirmed) {
+      return 1;
+    } else if (resultado.isDenied) {
+      return 2;
+    } else {
+      return null;
+    }
   });
 }
 
@@ -97,27 +69,31 @@ async function imprimirCodigoBarrasGuia(idGuia) {
     }
 
     const { data, error } = await clienteSupabase
-      .from("documento")
+      .from("guia_documento")
       .select(
         `
-        peso,
-        doc_emitido,
-        destinatario,
-        direccion,
-        codigo_barras,
+        documento:documento_id (
+          id,
+          peso,
+          doc_emitido,
+          destinatario,
+          direccion,
+          codigo_barras,
+          ubigeo:ubigeo_id (
+            departamento,
+            provincia,
+            distrito
+          )
+        ),
         guia:guia_id (
           id,
           fecha,
           sucursal:sucursal_id (
+            id,
             nombre
           )
-        ),
-        ubigeo:ubigeo_id (
-          departamento,
-          provincia,
-          distrito
         )
-      `,
+      `
       )
       .eq("guia_id", idGuia);
 
@@ -129,31 +105,36 @@ async function imprimirCodigoBarrasGuia(idGuia) {
 
     const etiquetasProcesadas = [];
     for (let i = 0; i < data.length; i++) {
-      const doc = data[i];
-      const codigoTexto = doc.codigo_barras || doc.doc_emitido || `DOC-${i}`;
+      const item = data[i];
+      const doc = item.documento || {};
+      const guia = item.guia || {};
+      
+      const registroPlano = {
+        ...doc,
+        guia: guia
+      };
+
+      const codigoTexto = registroPlano.codigo_barras || registroPlano.doc_emitido || `DOC-${i}`;
       const imagenBarcode = await generarCodigoBarrasBase64(
         codigoTexto,
-        columnasImpresora === 2,
+        columnasImpresora === 2
       );
-      etiquetasProcesadas.push({ ...doc, imagenBarcode });
+      
+      etiquetasProcesadas.push({ ...registroPlano, imagenBarcode });
     }
 
     let definicionPdf;
-    const altoPt = 2.5 * 28.3465; // Alto físico estricto: 2.5 cm
+    const altoPt = 2.5 * 28.3465; 
+    const anchoPt = 7.5 * 28.3465;
 
     if (columnasImpresora === 2) {
-      // Configuramos el ancho total a 11 cm exactos
+      // Nuevos ajustes con mayor margen de respiro en los extremos y centro
       const anchoTotalPt = 11 * 28.3465;
-      const altoPt = 2.5 * 28.3465;
+      const margenLateralPt = 0.5 * 28.3465; // Margen exterior de 0.5 cm a cada lado
+      const anchoColumnaPt = 4.5 * 28.3465;  // Ancho de columna de 4.6 cm
+      const separacionPt = 0.8 * 28.3465;    // Separación central de 0.8 cm
 
-      // Margen izquierdo y derecho de la hoja de 0.5 cm cada uno
-      const margenLateralPt = 0.5 * 28.3465;
-
-      // Espacio útil restante: 10 cm (dividido en Columna 1: 4.75cm, Separación: 0.5cm, Columna 2: 4.75cm para calzar perfecto)
-      const anchoColumnaPt = 4.75 * 28.3465;
-      const separacionPt = 0.5 * 28.3465;
-
-      const filasTabla = [];
+      const contenidoPaginas = [];
 
       for (let i = 0; i < etiquetasProcesadas.length; i += 2) {
         const item1 = etiquetasProcesadas[i];
@@ -162,72 +143,48 @@ async function imprimirCodigoBarrasGuia(idGuia) {
             ? etiquetasProcesadas[i + 1]
             : null;
 
-        const etiqueta1 = construirBloqueEtiqueta(
-          item1,
-          i,
-          etiquetasProcesadas.length,
-          true,
-        );
+        const etiqueta1 = construirBloqueEtiqueta(item1, i, etiquetasProcesadas.length, true);
         const etiqueta2 = item2
-          ? construirBloqueEtiqueta(
-              item2,
-              i + 1,
-              etiquetasProcesadas.length,
-              true,
-            )
+          ? construirBloqueEtiqueta(item2, i + 1, etiquetasProcesadas.length, true)
           : { text: "" };
 
-        filasTabla.push([
-          etiqueta1,
-          { text: "", width: separacionPt },
-          etiqueta2,
-        ]);
+        const tablaFila = {
+          table: {
+            widths: [anchoColumnaPt, separacionPt, anchoColumnaPt],
+            body: [[etiqueta1, { text: "", width: separacionPt }, etiqueta2]]
+          },
+          layout: "noBorders"
+        };
 
         if (i + 2 < etiquetasProcesadas.length) {
-          filasTabla.push([
-            { text: "", pageBreak: "after" },
-            { text: "" },
-            { text: "" },
-          ]);
+          tablaFila.pageBreak = 'after';
         }
+
+        contenidoPaginas.push(tablaFila);
       }
 
       definicionPdf = {
         pageSize: { width: anchoTotalPt, height: altoPt },
-        pageMargins: [margenLateralPt, 0, margenLateralPt, 0], // Margenes reales de 0.5 cm en los bordes de la impresora
-        content: [
-          {
-            table: {
-              widths: [anchoColumnaPt, separacionPt, anchoColumnaPt],
-              body: filasTabla,
-            },
-            layout: "noBorders",
-          },
-        ],
+        pageMargins: [margenLateralPt, 0.15 * 28.3465, margenLateralPt, 0.15 * 28.3465],
+        content: contenidoPaginas,
         defaultStyle: { font: "Roboto" },
       };
     } else {
-      const anchoPt = 7.5 * 28.3465; // 1 columna (7.5 cm)
       const contenidoEtiquetas = [];
 
       etiquetasProcesadas.forEach((item, index) => {
-        contenidoEtiquetas.push(
-          construirBloqueEtiqueta(
-            item,
-            index,
-            etiquetasProcesadas.length,
-            false,
-          ),
-        );
+        const bloque = construirBloqueEtiqueta(item, index, etiquetasProcesadas.length, false);
 
         if (index < etiquetasProcesadas.length - 1) {
-          contenidoEtiquetas.push({ text: "", pageBreak: "after" });
+          bloque.pageBreak = 'after';
         }
+
+        contenidoEtiquetas.push(bloque);
       });
 
       definicionPdf = {
         pageSize: { width: anchoPt, height: altoPt },
-        pageMargins: [0, 0, 0, 0],
+        pageMargins: [0.25 * 28.3465, 0.15 * 28.3465, 0.25 * 28.3465, 0.15 * 28.3465],
         content: contenidoEtiquetas,
         defaultStyle: { font: "Roboto" },
       };
@@ -277,9 +234,9 @@ function construirBloqueEtiqueta(doc, index, total, esDobleColumna = false) {
 
   const stackElementos = [];
 
-  const fontSizeSucursal = esDobleColumna ? 6 : 7.5;
-  const fontSizeDoc = esDobleColumna ? 6 : 7.5;
-  const anchoBarcode = esDobleColumna ? 125 : 190;
+  const fontSizeSucursal = esDobleColumna ? 5.5 : 7;
+  const fontSizeDoc = esDobleColumna ? 5.5 : 7;
+  const anchoBarcode = esDobleColumna ? 115 : 175;
 
   stackElementos.push({
     text: `${nombreSucursal}`,
@@ -287,7 +244,7 @@ function construirBloqueEtiqueta(doc, index, total, esDobleColumna = false) {
     bold: true,
     alignment: "center",
     color: "#000000",
-    margin: [0, 1, 0, 1],
+    margin: [0, 0, 0, 0.5],
   });
 
   if (doc.imagenBarcode) {
@@ -305,12 +262,12 @@ function construirBloqueEtiqueta(doc, index, total, esDobleColumna = false) {
     alignment: "center",
     bold: true,
     color: "#000000",
-    margin: [0, 0, 0, 1],
+    margin: [0, 0, 0, 0.5],
   });
 
   stackElementos.push({
     text: `DEST: ${destinatario}`,
-    fontSize: esDobleColumna ? 5 : 6.5,
+    fontSize: esDobleColumna ? 4.5 : 6,
     bold: true,
     color: "#000000",
     margin: [0, 0, 0, 0.5],
@@ -318,27 +275,27 @@ function construirBloqueEtiqueta(doc, index, total, esDobleColumna = false) {
 
   stackElementos.push({
     text: `DIR: ${direccion} - ${ubicacionCompleta}`,
-    fontSize: esDobleColumna ? 4.2 : 5.5,
+    fontSize: esDobleColumna ? 4 : 5,
     color: "#222222",
-    margin: [0, 0, 0, 1.5],
+    margin: [0, 0, 0, 0.5],
   });
 
   stackElementos.push({
     columns: [
       {
         text: `FEC: ${fechaFormateada}`,
-        fontSize: esDobleColumna ? 4.2 : 5.5,
+        fontSize: esDobleColumna ? 4 : 5,
         color: "#333333",
       },
       {
         text: `Ítem ${index + 1}/${total}`,
-        fontSize: esDobleColumna ? 4.2 : 5.5,
+        fontSize: esDobleColumna ? 4 : 5,
         color: "#444444",
         alignment: "center",
       },
       {
         text: `PESO: ${pesoTexto}`,
-        fontSize: esDobleColumna ? 5 : 6.5,
+        fontSize: esDobleColumna ? 4.5 : 6,
         bold: true,
         alignment: "right",
         color: "#990000",
@@ -349,7 +306,7 @@ function construirBloqueEtiqueta(doc, index, total, esDobleColumna = false) {
 
   return {
     stack: stackElementos,
-    margin: [2, 1, 2, 1],
+    margin: [0, 0, 0, 0], // Eliminamos el margen externo para evitar desbordes de altura
   };
 }
 
