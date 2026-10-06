@@ -9,7 +9,7 @@ function generarCodigoBarrasBase64(texto, esDobleColumna = false) {
       const canvas = document.createElement("canvas");
       const escala = 4;
       const anchoLogico = esDobleColumna ? 120 : 185;
-      const altoLogico = 28;
+      const altoLogico = 45;
 
       canvas.width = anchoLogico * escala;
       canvas.height = altoLogico * escala;
@@ -124,15 +124,14 @@ async function imprimirCodigoBarrasGuia(idGuia) {
     }
 
     let definicionPdf;
-    const altoPt = 2.5 * 28.3465; 
     const anchoPt = 7.5 * 28.3465;
 
     if (columnasImpresora === 2) {
-      // Nuevos ajustes con mayor margen de respiro en los extremos y centro
+      const altoPt = 2.5 * 28.3465; 
       const anchoTotalPt = 11 * 28.3465;
-      const margenLateralPt = 0.5 * 28.3465; // Margen exterior de 0.5 cm a cada lado
-      const anchoColumnaPt = 4.5 * 28.3465;  // Ancho de columna de 4.6 cm
-      const separacionPt = 0.8 * 28.3465;    // Separación central de 0.8 cm
+      const margenLateralPt = 0.8 * 28.3465; 
+      const anchoColumnaPt = 4 * 28.3465;  
+      const separacionPt = 0.8 * 28.3465;    
 
       const contenidoPaginas = [];
 
@@ -170,6 +169,8 @@ async function imprimirCodigoBarrasGuia(idGuia) {
         defaultStyle: { font: "Roboto" },
       };
     } else {
+      // 📌 1 columna: Alto optimizado a 3.0 cm y márgenes verticales ajustados para que no salte a otra página
+      const altoEtiquetaUnaColumnaPt = 3.0 * 28.3465; 
       const contenidoEtiquetas = [];
 
       etiquetasProcesadas.forEach((item, index) => {
@@ -183,8 +184,8 @@ async function imprimirCodigoBarrasGuia(idGuia) {
       });
 
       definicionPdf = {
-        pageSize: { width: anchoPt, height: altoPt },
-        pageMargins: [0.25 * 28.3465, 0.15 * 28.3465, 0.25 * 28.3465, 0.15 * 28.3465],
+        pageSize: { width: anchoPt, height: altoEtiquetaUnaColumnaPt },
+        pageMargins: [0.25 * 28.3465, 0.1 * 28.3465, 0.25 * 28.3465, 0.1 * 28.3465],
         content: contenidoEtiquetas,
         defaultStyle: { font: "Roboto" },
       };
