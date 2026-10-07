@@ -170,60 +170,47 @@ function seleccionarSucursal(id, nombre) {
 async function guardarUsuario(event) {
   event.preventDefault();
 
-  const usuario = document
-    .getElementById("input-usuario")
-    .value.trim()
-    .toUpperCase();
+  const usuario = document.getElementById("input-usuario").value.trim().toUpperCase();
   const contrasena = document.getElementById("input-contrasena").value.trim();
   const id_colaborador = document.getElementById("input-id-colaborador").value;
   const sucursal_id = document.getElementById("input-id-sucursal").value;
   const perfil = document.getElementById("input-perfil").value;
   const estado = document.getElementById("input-estado").checked;
 
-  const datosUsuario = {
-    usuario: usuario,
-    id_colaborador: parseInt(id_colaborador),
-    sucursal_id: parseInt(sucursal_id),
-    perfil: perfil,
-    estado: estado,
-  };
-
-  if (contrasena) {
-    datosUsuario.contrasena = await encriptarTexto(contrasena);
-  }
-
   try {
-    if (idUsuarioEditando === null) {
-      if (!contrasena) {
-        throw new Error("La contraseña es obligatoria para nuevos usuarios.");
-      }
-      const { error } = await window.supabaseClient
-        .from("usuario")
-        .insert([datosUsuario]);
+    // Validar contraseña obligatoria para nuevos usuarios
+    if (idUsuarioEditando === null && !contrasena) {
+      throw new Error("La contraseña es obligatoria para nuevos usuarios.");
+    }
 
-      if (error) throw error;
-      if (window.mostrarToast)
-        window.mostrarToast("¡Usuario registrado con éxito!", "success");
-    } else {
-      if (!contrasena) {
-        delete datosUsuario.contrasena; // Mantiene la clave anterior si no se escribe otra
-      }
-      const { error } = await window.supabaseClient
-        .from("usuario")
-        .update(datosUsuario)
-        .eq("id", idUsuarioEditando);
+    // Llamamos a la función segura en Supabase (RPC)
+    const { data, error } = await window.supabaseClient.rpc("guardar_usuario", {
+      p_id: idUsuarioEditando, // null si es nuevo, el ID si está editando
+      p_usuario: usuario,
+      p_contrasena: contrasena, // si está vacía al editar, la BD la ignorará
+      p_id_colaborador: parseInt(id_colaborador),
+      p_sucursal_id: parseInt(sucursal_id),
+      p_perfil: perfil,
+      p_estado: estado
+    });
 
-      if (error) throw error;
-      if (window.mostrarToast)
-        window.mostrarToast("¡Usuario actualizado con éxito!", "success");
+    if (error) throw error;
+
+    if (window.mostrarToast) {
+      const mensaje = idUsuarioEditando === null 
+        ? "¡Usuario registrado con éxito!" 
+        : "¡Usuario actualizado con éxito!";
+      window.mostrarToast(mensaje, "success");
     }
 
     cerrarModalUsuario();
     cargarTablaUsuarios();
+
   } catch (error) {
     console.error("Error:", error.message);
-    if (window.mostrarToast)
+    if (window.mostrarToast) {
       window.mostrarToast("Error: " + error.message, "error");
+    }
   }
 }
 
@@ -360,7 +347,6 @@ async function eliminarUsuario(id) {
   );
 }
 
-
 function prepararEdicionUsuario(item) {
   idUsuarioEditando = item.id;
 
@@ -395,13 +381,7 @@ function cerrarModalCambiarPassword() {
   idUsuarioPasswordCambio = null;
 }
 
-async function encriptarTexto(texto) {
-  const encoder = new TextEncoder();
-  const data = encoder.encode(texto);
-  const hashBuffer = await crypto.subtle.digest("SHA-256", data);
-  const hashArray = Array.from(new Uint8Array(hashBuffer));
-  return hashArray.map((b) => b.toString(16).padStart(2, "0")).join("");
-}
+
 
 async function guardarNuevaPassword(event) {
   event.preventDefault();
@@ -411,20 +391,18 @@ async function guardarNuevaPassword(event) {
     .value.trim();
 
   try {
-    const passwordEncriptada = await encriptarTexto(nuevaPass);
+    const { data, error } = await window.supabaseClient.rpc(
+      "cambiar_password_usuario",
+      {
+        p_usuario_id: idUsuarioPasswordCambio,
+        p_nueva_password: nuevaPass,
+      },
+    );
 
-    const { error } = await window.supabaseClient
-      .from("usuario")
-      .update({ contrasena: passwordEncriptada })
-      .eq("id", idUsuarioPasswordCambio);
-
-    if (error) throw error;
+    if (error || !data) throw error;
 
     if (window.mostrarToast) {
-      window.mostrarToast(
-        "¡Contraseña actualizada y encriptada con éxito!",
-        "success",
-      );
+      window.mostrarToast("¡Contraseña actualizada con éxito!", "success");
     } else {
       alert("Contraseña actualizada con éxito");
     }

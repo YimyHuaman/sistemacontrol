@@ -36,45 +36,28 @@ document.addEventListener("keydown", function (event) {
 async function handleLogin(event) {
   event.preventDefault();
 
-  const userInput = document
-    .getElementById("username")
-    .value.trim()
-    .toUpperCase();
+  const userInput = document.getElementById("username").value.trim().toUpperCase();
   const passInput = document.getElementById("password").value.trim();
 
   try {
-    const { data, error } = await window.supabaseClient
-      .from("usuario")
-      .select(
-        `
-        usuario,
-        contrasena,
-        estado,
-        colaborador:id_colaborador (id, nombres),
-        sucursal:sucursal_id (id, nombre, iniciales)
-      `,
-      )
-      .eq("usuario", userInput)
-      .eq("contrasena", passInput)
-      .eq("estado", true)
-      .single();
+    // Llamamos a la función segura en la base de datos
+    const { data, error } = await window.supabaseClient.rpc("login_usuario", {
+      p_usuario: userInput,
+      p_password: passInput
+    });
 
     if (error || !data) {
-      window.mostrarToast(
-        "Credenciales incorrectas o usuario inactivo.",
-        "error",
-      );
+      window.mostrarToast("Credenciales incorrectas o usuario inactivo.", "error");
 
       const form = document.getElementById("login-form");
       if (form) form.reset();
 
       const usernameInput = document.getElementById("username");
       if (usernameInput) usernameInput.focus();
-
       return;
     }
 
-    // 🔑 1. Guardar la sesión completa y los IDs planos en el localStorage
+    // 🔑 1. Guardar la sesión limpia (la contraseña ya ni siquiera existe aquí)
     sessionStorage.setItem("sesion_usuario", JSON.stringify(data));
 
     if (data.sucursal && data.sucursal.id) {
@@ -85,30 +68,24 @@ async function handleLogin(event) {
     }
 
     // ✨ 2. Mostrar el mensaje de bienvenida personalizado
-    const nombreColaborador =
-      data.colaborador?.nombres || data.usuario || "USUARIO";
+    const nombreColaborador = data.colaborador?.nombres || data.usuario || "USUARIO";
     if (typeof window.mostrarToast === "function") {
       window.mostrarToast(`¡Bienvenido, ${nombreColaborador}!`, "success");
     }
 
-    // 🚀 3. Redirigir al dashboard tras un leve retraso para que se luzca el toast
+    // 🚀 3. Redirigir al dashboard
     setTimeout(() => {
-      if (
-        typeof SPA !== "undefined" &&
-        typeof SPA.mostrarDashboard === "function"
-      ) {
-        SPA.mostrarDashboard(data); // Envías el objeto completo al dashboard
+      if (typeof SPA !== "undefined" && typeof SPA.mostrarDashboard === "function") {
+        SPA.mostrarDashboard(data);
       } else if (typeof window.initDashboard === "function") {
         window.initDashboard(data);
       }
     }, 800);
+
   } catch (err) {
     console.error("Error en el proceso de autenticación:", err);
     if (typeof window.mostrarToast === "function") {
-      window.mostrarToast(
-        "Ocurrió un error de conexión con el servidor.",
-        "error",
-      );
+      window.mostrarToast("Ocurrió un error de conexión con el servidor.", "error");
     }
   }
 }

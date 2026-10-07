@@ -84,7 +84,7 @@ async function cargarGuiasPorTipo(tipoFiltro, nombreModo) {
       .select("*")
       .eq("sucursal_id", parseInt(sucursalIdLogueada))
       .eq("tipo", tipoFiltro)
-      .order("id", { ascending: false }); // <-- Asegura que los últimos creados salgan primero
+      .order("correlativo", { ascending: false }); // <-- Asegura que los últimos creados salgan primero
 
     if (error) throw new Error(error.message);
 
