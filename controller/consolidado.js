@@ -213,7 +213,7 @@ window.renderizarGridConsolidado = function (data) {
   }
 
   let html = `
-    <div class="overflow-x-auto max-h-[500px]">
+    <div class="overflow-x-auto w-full">
       <table class="w-full text-left border-collapse text-[11px]">
         <thead class="bg-slate-100 text-slate-700 sticky top-0 z-10 border-b border-slate-200">
           <tr>
@@ -244,16 +244,10 @@ window.renderizarGridConsolidado = function (data) {
   `;
 
   data.forEach((row) => {
-    const fechaAdm = row.fecha_admision
-      ? row.fecha_admision.split("T")[0]
-      : "-";
+    const fechaAdm = row.fecha_admision ? row.fecha_admision.split("T")[0] : "-";
     const fechaEnt = row.fecha_entrega ? row.fecha_entrega.split("T")[0] : "-";
-    const fechaDes = row.fecha_descargo
-      ? row.fecha_descargo.split("T")[0]
-      : "-";
-    const fechaDev = row.fecha_devolucion
-      ? row.fecha_devolucion.split("T")[0]
-      : "-";
+    const fechaDes = row.fecha_descargo ? row.fecha_descargo.split("T")[0] : "-";
+    const fechaDev = row.fecha_devolucion ? row.fecha_devolucion.split("T")[0] : "-";
 
     html += `
       <tr class="hover:bg-slate-50 transition-colors">
@@ -328,113 +322,110 @@ document.addEventListener("DOMContentLoaded", () => {
 });
 
 window.exportarExcelDistribucion = function () {
-  // 1. Validar si hay datos en pantalla para exportar
-  const datos = window.datosConsolidadoGlobal || [];
-  if (datos.length === 0) {
+  const tabla = document.querySelector("#wrapper-grid-table-consolidado table");
+  
+  if (!tabla) {
     if (typeof window.mostrarToast === "function") {
-      window.mostrarToast("No hay registros para exportar.", "warning");
+      window.mostrarToast("No hay registros en la tabla para exportar.", "warning");
     } else {
-      alert("No hay registros para exportar.");
+      alert("No hay registros en la tabla para exportar.");
     }
     return;
   }
 
-  // Función auxiliar para formatear fechas solo como DD/MM/YYYY
-  function formatearSoloFecha(fechaStr) {
-    if (!fechaStr) return "";
-    const fecha = new Date(fechaStr);
-    if (isNaN(fecha)) return fechaStr; // Si ya es texto o formato extraño
-    const dia = String(fecha.getDate()).padStart(2, "0");
-    const mes = String(fecha.getMonth() + 1).padStart(2, "0");
-    const anio = fecha.getFullYear();
-    return `${dia}/${mes}/${anio}`;
+  // 1. Obtener las filas del cuerpo de la tabla (tbody)
+  const filas = tabla.querySelectorAll("tbody tr");
+  
+  if (filas.length === 0 || (filas.length === 1 && filas[0].innerText.includes("No se encontraron"))) {
+    alert("No hay registros para exportar.");
+    return;
   }
 
-  // 2. Obtener fechas de los inputs para el encabezado
-  const fechaDesdeInput = document.getElementById("fecha-desde").value || "N/A";
-  const fechaHastaInput = document.getElementById("fecha-hasta").value || "N/A";
+  const datosMapeados = [];
 
-  // 3. Obtener el nombre de la sucursal de la sesión de manera segura
-  const nombreSucursal =
-    sessionStorage.getItem("sucursal_nombre") || "Sin Sucursal";
+  // 2. Recorrer cada fila visible en el grid para extraer sus datos exactos (omitimos celdas[0] que es el servicio duplicado)
+  filas.forEach((tr, index) => {
+    const celdas = tr.querySelectorAll("td");
+    if (celdas.length < 21) return; // Asegurar que tenga todas las columnas
 
-  // 4. Preparar los datos limpios para la tabla de Excel (con fechas sin horas)
-  const datosMapeados = datos.map((item, index) => ({
-    "N°": index + 1,
-    "Hoja de Ruta": item.hoja_ruta || "SIN GUÍA",
-    "Doc. Emitido": item.doc_emitido || "",
-    "Guia Admisión": item.correlativo_admision || "",
-    "Código de Barras": item.codigo_barras || "",
-    Orden: item.orden || "",
-    Destinatario: item.destinatario || "",
-    Dirección: item.direccion || "",
-    Departamento: item.departamento || "",
-    Provincia: item.provincia || "",
-    Distrito: item.distrito || "",
-    Estado: item.nombre_estado || "",
-    Acceso: item.acceso || "",
-    "Tipo Servicio": item.descripcion || "",
-    "Fecha Admisión": formatearSoloFecha(item.fecha_admision),
-    "Fecha Entrega": formatearSoloFecha(item.fecha_entrega),
-    "Fecha Descargo": formatearSoloFecha(item.fecha_descargo),
-    "Guia Devolución": formatearSoloFecha(item.fecha_devolucion),
-    "Correlativo Devolución": item.correlativo_devolucion || "",
-    Peso: item.peso || 0,
-    Cantidad: item.cantidad || 0,
-  }));
+    datosMapeados.push({
+      "N°": index + 1, // Numeración correlativa automática (1, 2, 3...)
+      // Omitimos celdas[0] ("Servicio (Código)")
+      "Hoja Ruta": celdas[1].innerText.trim(),
+      "Doc. Emitido": celdas[2].innerText.trim(),
+      "Guia Adm.": celdas[3].innerText.trim(),
+      "Código Barras": celdas[4].innerText.trim(),
+      "Orden": celdas[5].innerText.trim(),
+      "Destinatario": celdas[6].innerText.trim(),
+      "Dirección / Ubigeo": celdas[7].innerText.trim(),
+      "Departamento": celdas[8].innerText.trim(),
+      "Provincia": celdas[9].innerText.trim(),
+      "Distrito": celdas[10].innerText.trim(),
+      "Estado": celdas[11].innerText.trim(),
+      "Acceso": celdas[12].innerText.trim(),
+      "Servicio (Desc)": celdas[13].innerText.trim(),
+      "Fecha Admisión": celdas[14].innerText.trim(),
+      "Fecha Entrega": celdas[15].innerText.trim(),
+      "Fecha Descargo": celdas[16].innerText.trim(),
+      "Fecha Devolución": celdas[17].innerText.trim(),
+      "Guia Dev.": celdas[18].innerText.trim(),
+      "Peso": celdas[19].innerText.trim(),
+      "Cantidad": celdas[20].innerText.trim()
+    });
+  });
 
-  // 5. Validar si la librería XLSX está cargada
+  // 3. Validar si la librería XLSX está cargada
   if (typeof XLSX === "undefined") {
     alert("La librería XLSX no está cargada en el sistema.");
     return;
   }
 
+  const fechaDesdeInput = document.getElementById("fecha-desde").value || "N/A";
+  const fechaHastaInput = document.getElementById("fecha-hasta").value || "N/A";
+  const nombreSucursal = sessionStorage.getItem("sucursal_nombre") || "Sin Sucursal";
+
   const wb = XLSX.utils.book_new();
 
-  // Todo el encabezado agrupado utilizando la variable correcta (nombreSucursal)
+  // Encabezado del reporte
   const headerRows = [
     [
       `REPORTE DE DISTRIBUCIÓN DE ENVÍOS\n` +
         ` ${nombreSucursal} | ` +
-        ` D ${fechaDesdeInput} Hasta ${fechaHastaInput} | ` +
-        `Fecha de Generación: ${formatearSoloFecha(new Date())}`,
+        ` Desde ${fechaDesdeInput} Hasta ${fechaHastaInput} | ` +
+        `Fecha de Generación: ${new Date().toLocaleDateString()}`,
     ],
-    [], // Fila vacía de separación antes de la tabla
+    [], // Fila vacía de separación
   ];
 
-  // Convertimos los datos mapeados a formato de hoja de cálculo iniciando en la fila 3
+  // Convertimos los datos mapeados iniciando en la fila 3
   const wsData = XLSX.utils.json_to_sheet(datosMapeados, { origin: "A3" });
-
-  // Añadimos el encabezado único arriba
   XLSX.utils.sheet_add_aoa(wsData, headerRows, { origin: "A1" });
 
-  // Ajuste visual de anchos de columnas
-  const colWidths = [
-    { wch: 5 }, // N°
-    { wch: 15 }, // Hoja de Ruta
-    { wch: 12 }, // Doc Emitido
-    { wch: 18 }, // Guia Admision
-    { wch: 18 }, // Código de Barras
-    { wch: 8 }, // Orden
+  // Ajuste visual de anchos de columnas (sin la columna de código de servicio)
+  wsData["!cols"] = [
+    { wch: 5 },  // N°
+    { wch: 15 }, // Hoja Ruta
+    { wch: 12 }, // Doc. Emitido
+    { wch: 15 }, // Guia Adm.
+    { wch: 18 }, // Código Barras
+    { wch: 8 },  // Orden
     { wch: 25 }, // Destinatario
-    { wch: 30 }, // Dirección
+    { wch: 30 }, // Dirección / Ubigeo
     { wch: 15 }, // Departamento
     { wch: 15 }, // Provincia
     { wch: 15 }, // Distrito
     { wch: 15 }, // Estado
     { wch: 12 }, // Acceso
-    { wch: 15 }, // Tipo Servicio
+    { wch: 15 }, // Servicio (Desc)
     { wch: 15 }, // Fecha Admisión
     { wch: 15 }, // Fecha Entrega
     { wch: 15 }, // Fecha Descargo
     { wch: 15 }, // Fecha Devolución
-    { wch: 20 }, // Correlativo Devolución
+    { wch: 15 }, // Guia Dev.
     { wch: 10 }, // Peso
     { wch: 10 }, // Cantidad
   ];
-  wsData["!cols"] = colWidths;
 
-  // 6. Adjuntar la hoja al libro y descargar el archivo
   XLSX.utils.book_append_sheet(wb, wsData, "Distribucion");
 
   const nombreArchivo = `Reporte_Distribucion_${fechaDesdeInput}_al_${fechaHastaInput}.xlsx`;
