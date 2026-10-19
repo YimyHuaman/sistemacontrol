@@ -8,24 +8,32 @@ let gridColaboradoresInstance = null;
 // 1. GESTIÓN DEL MODAL (Crear y Editar)
 // ==========================================
 
-// Abrir Modal para CREAR nuevo colaborador
 function abrirModalColaborador() {
-  idColaboradorEditando = null; // Modo Creación
-  document.getElementById("formColaborador").reset();
+  // 1. Limpiar el ID para asegurar modo "Creación"
+  idColaboradorEditando = null;
 
-  // Cambiar textos del modal a modo Creación
-  document.getElementById("tituloModalColaborador").innerText = "Registrar Nuevo Colaborador";
-  document.getElementById("btnAccionColaborador").innerText = "Guardar Colaborador";
+  // 2. Resetear todos los campos del formulario (Nombre y Cargo)
+  const form = document.getElementById("formColaborador");
+  if (form) form.reset();
 
-  document.getElementById("modalColaborador").classList.remove("hidden");
+  // 3. Restablecer el título y texto del botón
+  const titulo = document.getElementById("tituloModalColaborador");
+  const btnAccion = document.getElementById("btnAccionColaborador");
+  
+  if (titulo) titulo.innerText = "Registrar Nuevo Colaborador";
+  if (btnAccion) btnAccion.innerText = "Guardar Colaborador";
+
+  // 4. Mostrar el modal quitando la clase 'hidden'
+  const modal = document.getElementById("modalColaborador");
+  if (modal) modal.classList.remove("hidden");
 }
-
 // Abrir Modal para EDITAR colaborador (Rellena los datos actuales)
-function prepararEdicionColaborador(id, nombres) {
+function prepararEdicionColaborador(id, nombres, cargo) {
   idColaboradorEditando = id; // Modo Edición guardando el ID
 
-  // Rellenar el input con el nombre que viene de la tabla
+  // Rellenar los inputs con los datos que vienen de la tabla
   document.getElementById("nombreColaborador").value = nombres;
+  document.getElementById("input-cargo").value = cargo;
 
   // Cambiar textos del modal a modo Edición
   document.getElementById("tituloModalColaborador").innerText = "Actualizar Colaborador";
@@ -53,13 +61,14 @@ async function guardarColaborador(event) {
   event.preventDefault();
 
   const nombres = document.getElementById("nombreColaborador").value.trim().toUpperCase();
+  const cargo = document.getElementById("input-cargo").value; // Capturamos el cargo seleccionado
 
   try {
     if (idColaboradorEditando === null) {
       // --- INSERTAR NUEVO ---
       const { error } = await window.supabaseClient
-        .from("colaborador") //[cite: 1] Nombre exacto de tu tabla
-        .insert([{ nombres: nombres }]); //[cite: 1] Columna exacta en tu base de datos
+        .from("colaborador")
+        .insert([{ nombres: nombres, cargo: cargo }]); // Añadimos el campo cargo
 
       if (error) throw error;
       
@@ -69,8 +78,8 @@ async function guardarColaborador(event) {
     } else {
       // --- ACTUALIZAR EXISTENTE ---
       const { error } = await window.supabaseClient
-        .from("colaborador") //[cite: 1]
-        .update({ nombres: nombres }) //[cite: 1]
+        .from("colaborador")
+        .update({ nombres: nombres, cargo: cargo }) // Actualizamos también el cargo
         .eq("id", idColaboradorEditando);
 
       if (error) throw error;
@@ -131,19 +140,28 @@ function eliminarColaborador(id) {
 async function cargarTablaColaboradores() {
   try {
     const { data: colaborador, error } = await window.supabaseClient
-      .from("colaborador") //[cite: 1]
+      .from("colaborador")
       .select("*")
       .order("id", { ascending: true });
 
     if (error) throw error;
 
     const rows = (colaborador || []).map((item) => [
-      item.id, //[cite: 1]
-      item.nombres, //[cite: 1]
+      item.id,
+      item.nombres,
+      gridjs.html(`
+        <span class="px-2 py-0.5 text-[11px] font-semibold rounded-md ${
+          item.cargo === 'MENSAJERO' 
+            ? 'bg-blue-100 text-blue-700 border border-blue-200' 
+            : 'bg-emerald-100 text-emerald-700 border border-emerald-200'
+        }">
+          ${item.cargo || 'NO ASIGNADO'}
+        </span>
+      `),
       gridjs.html(`
         <div class="flex items-center gap-2">
           <!-- Botón Editar -->
-          <button type="button" onclick="prepararEdicionColaborador(${item.id}, '${item.nombres}')" 
+          <button type="button" onclick="prepararEdicionColaborador(${item.id}, '${item.nombres.replace(/'/g, "\\'")}', '${(item.cargo || "").replace(/'/g, "\\'")}')" 
             class="text-amber-500 hover:text-amber-700 p-1 transition-colors" title="Editar">
             <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 inline-block" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
@@ -172,6 +190,7 @@ async function cargarTablaColaboradores() {
       columns: [
         { name: "ID", width: "70px" },
         { name: "Nombres del Colaborador" },
+        { name: "Cargo", width: "150px" },
         { name: "Acciones", width: "100px", sort: false },
       ],
       data: rows,

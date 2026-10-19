@@ -40,8 +40,9 @@
         <!-- Formulario -->
         <form id="formColaborador" onsubmit="guardarColaborador(event)" class="p-6 space-y-4">
 
-            <!-- Input Nombre del Colaborador -->
-            <div>
+            <!-- Contenedor con espacio entre los campos -->
+            <div class="space-y-3">
+                <!-- Input Nombre del Colaborador -->
                 <div
                     class="relative border border-slate-300 rounded-lg px-2.5 pt-3 pb-1 bg-white focus-within:border-blue-600 focus-within:ring-1 focus-within:ring-blue-600">
                     <label class="absolute -top-2 left-2.5 px-1 bg-white text-[10px] font-semibold text-slate-600">
@@ -49,6 +50,20 @@
                     </label>
                     <input type="text" id="nombreColaborador" placeholder="Ej. Juan Pérez" autocomplete="off"
                         maxlength="100" required class="w-full bg-white text-xs text-slate-800 py-1 focus:outline-none">
+                </div>
+
+                <!-- Select Cargo -->
+                <div
+                    class="relative border border-slate-300 rounded-lg px-2.5 pt-3 pb-1 bg-white focus-within:border-blue-600">
+                    <label class="absolute -top-2 left-2.5 px-1 bg-white text-[10px] font-semibold text-slate-600">
+                        Cargo
+                    </label>
+                    <select id="input-cargo" required
+                        class="w-full bg-white text-xs text-slate-800 uppercase py-1 focus:outline-none">
+                        <option value="">Seleccione...</option>
+                        <option value="MENSAJERO">MENSAJERO</option>
+                        <option value="OPERADOR POSTAL">OPERADOR POSTAL</option>
+                    </select>
                 </div>
             </div>
 
