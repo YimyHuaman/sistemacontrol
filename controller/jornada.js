@@ -231,23 +231,38 @@ async function guardarRendicionCartero(e) {
   }
 }
 
+// Variable para almacenar el texto de búsqueda actual
+let textoBusquedaFiltro = "";
+
+// Función que captura lo que escribes en el buscador
+function filtrarCarteros() {
+  const input = document.getElementById("input-buscar-cartero");
+  textoBusquedaFiltro = input ? input.value.toLowerCase().trim() : "";
+  renderizarTarjetasCarteros();
+}
+
 function renderizarTarjetasCarteros() {
   const contenedor = document.getElementById("contenedor-tarjetas-carteros");
   if (!contenedor) return;
 
   contenedor.innerHTML = "";
 
-  if (carterosJornada.length === 0) {
+  // 1. Filtrar primero por el texto de búsqueda si el usuario escribió algo
+  const carterosFiltrados = carterosJornada.filter(c => 
+    c.nombre.toLowerCase().includes(textoBusquedaFiltro)
+  );
+
+  if (carterosFiltrados.length === 0) {
     contenedor.innerHTML = `
       <div class="col-span-full bg-white p-4 rounded-xl border border-slate-200 text-center text-slate-500 text-xs">
-        No hay carteros registrados con el cargo de MENSAJERO.
+        No se encontraron carteros que coincidan con la búsqueda.
       </div>
     `;
     return;
   }
 
-  // ORDENAR: Priorizar los que están en estado "pendiente" primero
-  const carterosOrdenados = [...carterosJornada].sort((a, b) => {
+  // 2. ORDENAR: Priorizar los que están en estado "pendiente" primero
+  const carterosOrdenados = [...carterosFiltrados].sort((a, b) => {
     if (a.estado === "pendiente" && b.estado !== "pendiente") return -1;
     if (a.estado !== "pendiente" && b.estado === "pendiente") return 1;
     return 0;
@@ -263,15 +278,15 @@ function renderizarTarjetasCarteros() {
           <div class="flex justify-between items-center mb-1.5">
             <span class="text-[9px] font-semibold uppercase text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded">Cartero #${c.id}</span>
             
-            <!-- Etiqueta de Estado: ROJO para pendiente, VERDE/AMBAR para cerrado -->
+            <!-- Etiqueta de Estado: ROJO para pendiente, VERDE para cerrado -->
             <span class="text-[9px] font-semibold px-2 py-0.5 rounded ${
               estaCerrado
-                ? c.tipoCierre === "AUTOMATICO_6PM"
+                ? c.tipoCierre === "AUTOMATICO_7PM"
                   ? "bg-amber-100 text-amber-800"
                   : "bg-emerald-100 text-emerald-700 border border-emerald-200"
                 : "bg-red-100 text-red-600 border border-red-200 animate-pulse"
             }">
-              ${estaCerrado ? (c.tipoCierre === "AUTOMATICO_6PM" ? "Cerrado 6 PM" : "Cerrado") : "Pendiente"}
+              ${estaCerrado ? (c.tipoCierre === "AUTOMATICO_7PM" ? "Cerrado 7 PM" : "Cerrado") : "Pendiente"}
             </span>
           </div>
           
