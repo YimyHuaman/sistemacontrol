@@ -230,7 +230,7 @@ window.pintarTablaDocumentos = function (datos) {
     const itemString = encodeURIComponent(JSON.stringify(item));
 
     return [
-      item.servicio || "", // Corresponde a ts.codigo AS servicio
+      item.codigo || "", // Corresponde a ts.codigo AS servicio
       item.hoja_ruta || "", // Corresponde a d.hoja_ruta
       item.codigo_barras || "",
       item.doc_emitido || "",
@@ -1044,6 +1044,17 @@ window.guardarDevolucionesTotales = async function () {
 ============================================================ */
 let itemActualEnEdicion = null;
 
+// ⚖️ Función auxiliar para formatear el peso de kg (0.050) a gramos (50) al abrir
+function obtenerPesoFormateado(peso) {
+  if (peso === null || peso === undefined || peso === "") return "";
+  const pesoNum = parseFloat(peso);
+  if (isNaN(pesoNum)) return "";
+  if (pesoNum < 1 && pesoNum > 0) {
+    return Math.round(pesoNum * 1000).toString();
+  }
+  return Math.round(pesoNum).toString();
+}
+
 window.abrirModalEditarRegistro = function (item) {
   console.log("Abriendo modal de edición para:", item);
 
@@ -1053,7 +1064,7 @@ window.abrirModalEditarRegistro = function (item) {
   const modal = document.getElementById("modal-editar-registro");
   if (!modal) {
     console.error(
-      "❌ No se encontró el elemento #modal-editar-registro en el DOM",
+      "❌ No se encontró el elemento #modal-editar-registro al DOM",
     );
     return;
   }
@@ -1064,22 +1075,13 @@ window.abrirModalEditarRegistro = function (item) {
     spanCodigo.textContent = item.codigo_barras || item.id || "---";
   }
 
-  // ⚖️ Conversión del peso al abrir: de decimal kg (0.050) a número natural en gramos (50)
-  let pesoNatural = "";
-  if (item.peso !== null && item.peso !== undefined && item.peso !== "") {
-    const pesoNum = parseFloat(item.peso);
-    if (!isNaN(pesoNum)) {
-      pesoNatural = pesoNum < 1 && pesoNum > 0 ? Math.round(pesoNum * 1000) : Math.round(pesoNum);
-    }
-  }
-
-  // 2. Rellenar los campos básicos del formulario
+  // 2. Rellenar los campos básicos del formulario (usando el peso formateado)
   const campos = {
     "input-hoja-ruta-edicion": item.hoja_ruta || "",
     "input-documento-edicion": item.doc_emitido || item.documento || "",
     "input-destinatario-edicion": item.destinatario || "",
     "input-direccion-edicion": item.direccion || "",
-    "input-peso-edicion": pesoNatural,
+    "input-peso-edicion": obtenerPesoFormateado(item.peso),
   };
 
   for (const [id, valor] of Object.entries(campos)) {
@@ -1179,9 +1181,9 @@ window.toggleUbicacionEdicion = function (checkbox) {
         provSelect.disabled = true;
       }
       if (distSelect) {
-        const idDistritoOriginal = itemActualEnEdicion.ubigeo_id || itemActualEnEdicion.ubigeo || itemActualEnEdicion.distrito_id || "";
-        distSelect.innerHTML = `<option value="${idDistritoOriginal}">${itemActualEnEdicion.distrito || itemActualEnEdicion.ubigeo_nombre || ""}</option>`;
-        distSelect.value = idDistritoOriginal;
+        distSelect.innerHTML = `<option value="${itemActualEnEdicion.ubigeo_id || itemActualEnEdicion.ubigeo || itemActualEnEdicion.distrito_id || ""}">${itemActualEnEdicion.distrito || itemActualEnEdicion.ubigeo_nombre || ""}</option>`;
+        distSelect.value =
+          itemActualEnEdicion.ubigeo_id || itemActualEnEdicion.ubigeo || itemActualEnEdicion.distrito_id || "";
         distSelect.disabled = true;
       }
     }
@@ -1216,9 +1218,9 @@ window.guardarCambiosEdicionRegistro = async function () {
   const direccion =
     document.getElementById("input-direccion-edicion")?.value.trim() || "";
   
-  // ⚖️ Conversión del peso: de gramos (ej. 50) a decimal en kilogramos convertido a TEXTO (ej. "0.050")
+  // ⚖️ Conversión del peso al guardar: de gramos (ej. 50) a decimal en formato texto (ej. "0.050")
   const pesoInput = parseFloat(document.getElementById("input-peso-edicion")?.value) || 0;
-  const pesoDecimalTexto = pesoInput > 0 ? (pesoInput / 1000).toFixed(3) : "0.000";
+  const pesoFinalTexto = pesoInput > 0 ? (pesoInput / 1000).toFixed(3) : "0.000";
 
   // 2. Validaciones básicas obligatorias
   if (!hojaRuta) {
@@ -1235,12 +1237,12 @@ window.guardarCambiosEdicionRegistro = async function () {
     return;
   }
 
-  // 3. 🔒 LÓGICA DE UBIGEO BLINDADA:
+  // 3. Manejar el Ubigeo según el estado del Checkbox de edición (Tu misma lógica original)
   const checkUbicacion = document.getElementById("check-editar-ubicacion");
-  let ubigeoFinal = "";
+  let ubigeoFinal =
+    itemActualEnEdicion.ubigeo_id || itemActualEnEdicion.ubigeo || itemActualEnEdicion.distrito_id || "";
 
   if (checkUbicacion && checkUbicacion.checked) {
-    // 🟢 Si el checkbox SÍ está activo, tomamos el nuevo ID seleccionado en el select de distrito
     const selectDistrito = document.getElementById("input-distrito-edicion");
     ubigeoFinal = selectDistrito ? selectDistrito.value : "";
 
@@ -1253,29 +1255,16 @@ window.guardarCambiosEdicionRegistro = async function () {
       }
       return;
     }
-  } else {
-    // 🔒 Si el checkbox NO está activo, mantenemos obligatoriamente el ID original del registro sin alterar nada
-    ubigeoFinal = 
-      itemActualEnEdicion.ubigeo_id || 
-      itemActualEnEdicion.ubigeo || 
-      itemActualEnEdicion.distrito_id || 
-      document.getElementById("input-distrito-edicion")?.value || 
-      "";
   }
 
-  if (!ubigeoFinal) {
-    alert("Error: No se pudo determinar el Ubigeo original del registro.");
-    return;
-  }
-
-  // 4. Construir el objeto asegurando enteros válidos y texto en el peso
+  // 4. Construir el objeto con los campos exactos para Supabase
   const datosActualizados = {
-    tipo_servicio_id: parseInt(tipoServicio),
+    tipo_servicio_id: tipoServicio,
     doc_emitido: documentoEm,
     destinatario: destinatario,
     direccion: direccion,
-    ubigeo_id: parseInt(ubigeoFinal), // 👈 Mantiene siempre el ID original o el nuevo de forma estricta
-    peso: pesoDecimalTexto,          // 👈 Guarda el peso en formato decimal de texto ("0.050")
+    ubigeo_id: ubigeoFinal,
+    peso: pesoFinalTexto, // 👈 Se envía convertido a texto decimal ("0.050") para tu columna text de Supabase
     hoja_ruta: hojaRuta,
   };
 
@@ -1344,6 +1333,7 @@ window.guardarCambiosEdicionRegistro = async function () {
     },
   );
 };
+
 
 window.cerrarModalEditarRegistro = function () {
   const modal = document.getElementById("modal-editar-registro");

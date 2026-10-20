@@ -198,6 +198,9 @@ window.buscarConsolidado = async function () {
 // ==========================================
 // 4. RENDERIZAR LA TABLA DE RESULTADOS EN EL GRID
 // ==========================================
+// Variable global para mantener el límite del consolidado de forma estática
+window.limiteTablaConsolidado = window.limiteTablaConsolidado || 10;
+
 window.renderizarGridConsolidado = function (data) {
   const contenedor = document.getElementById("wrapper-grid-table-consolidado");
 
@@ -205,86 +208,191 @@ window.renderizarGridConsolidado = function (data) {
 
   if (!data || data.length === 0) {
     contenedor.innerHTML = `
-      <div class="p-8 text-center text-slate-400 text-xs">
+      <div class="p-12 text-center text-slate-400 text-xs bg-white rounded-xl border border-slate-200 shadow-sm">
         No se encontraron registros para el rango de fechas y filtros seleccionados en esta sucursal.
       </div>
     `;
     return;
   }
 
-  let html = `
-    <div class="overflow-x-auto w-full">
-      <table class="w-full text-left border-collapse text-[11px]">
-        <thead class="bg-slate-100 text-slate-700 sticky top-0 z-10 border-b border-slate-200">
-          <tr>
-            <th class="p-2 border-r border-slate-200">Servicio</th>
-            <th class="p-2 border-r border-slate-200">Hoja Ruta</th>
-            <th class="p-2 border-r border-slate-200">Doc. Emitido</th>
-            <th class="p-2 border-r border-slate-200">Guia Adm.</th>
-            <th class="p-2 border-r border-slate-200">Código Barras</th>
-            <th class="p-2 border-r border-slate-200">Orden</th>
-            <th class="p-2 border-r border-slate-200">Destinatario</th>
-            <th class="p-2 border-r border-slate-200">Dirección / Ubigeo</th>
-            <th class="p-2 border-r border-slate-200">Departamento</th>
-            <th class="p-2 border-r border-slate-200">Provincia</th>
-            <th class="p-2 border-r border-slate-200">Distrito</th>
-            <th class="p-2 border-r border-slate-200">Estado</th>
-            <th class="p-2 border-r border-slate-200">Acceso</th>
-            <th class="p-2 border-r border-slate-200">Servicio</th>
-            <th class="p-2 border-r border-slate-200">Fecha Admisión</th>
-            <th class="p-2 border-r border-slate-200">Fecha Entrega</th>
-            <th class="p-2 border-r border-slate-200">Fecha Descargo</th>
-            <th class="p-2 border-r border-slate-200">Fecha Devolución</th>
-            <th class="p-2 border-r border-slate-200">Guia Dev.</th>
-            <th class="p-2 border-r border-slate-200">Peso</th>
-            <th class="p-2">Cantidad</th>
-          </tr>
-        </thead>
-        <tbody class="divide-y divide-slate-200 bg-white">
+  // Función auxiliar para formatear fechas a DD/MM/YYYY
+  const formatearFechaDMY = (fechaStr) => {
+    if (!fechaStr) return "-";
+    const soloFecha = fechaStr.split("T")[0];
+    const partes = soloFecha.split("-");
+    if (partes.length === 3) {
+      const [anio, mes, dia] = partes;
+      return `${dia}/${mes}/${anio}`;
+    }
+    return fechaStr;
+  };
+
+  // 1. Cálculo de totales generales sobre toda la data
+  const totalEnvios = data.length;
+  const totalPeso = data.reduce((acc, row) => acc + (Number(row.peso) || 0), 0);
+  const totalCantidad = data.reduce((acc, row) => acc + (Number(row.cantidad) || 0), 0);
+
+  // 2. Mapeo de filas para Grid.js con estilos de color idénticos a los tuyos
+  const rowsData = data.map((row) => [
+    gridjs.html(`<span class="text-blue-600 font-semibold">${row.guia_admision || "-"}</span>`),
+    row.codigo || "-",
+    row.hoja_ruta || "-",
+    row.doc_emitido || "-",
+    gridjs.html(`<span class="text-blue-600 font-semibold">${row.guia_fisica || "-"}</span>`),
+    gridjs.html(`<span class="font-mono text-[10px] text-slate-600">${row.codigo_barras || "-"}</span>`),
+    row.orden || "-",
+    gridjs.html(`<span class="font-medium text-slate-900">${row.destinatario || "-"}</span>`),
+    row.direccion || "-",
+    row.departamento || "-",
+    row.provincia || "-",
+    row.distrito || "-",
+    gridjs.html(`<span class="font-semibold text-indigo-700">${row.nombre_estado || "-"}</span>`),
+    row.acceso || "-",
+    row.descripcion || "-",
+    formatearFechaDMY(row.fecha_admision),
+    formatearFechaDMY(row.fecha_entrega),
+    formatearFechaDMY(row.fecha_descargo),
+    formatearFechaDMY(row.fecha_devolucion),
+    gridjs.html(`<span class="text-amber-600 font-semibold">${row.guia_devolucion || "-"}</span>`),
+    gridjs.html(`<span class="text-right font-medium text-slate-700">${row.peso !== null && row.peso !== undefined ? Number(row.peso).toFixed(2) : "0.00"}</span>`),
+    gridjs.html(`<span class="text-right font-medium text-slate-700">${row.cantidad !== null && row.cantidad !== undefined ? row.cantidad : "0"}</span>`),
+  ]);
+
+  if (window.gridConsolidadoInstance) {
+    window.gridConsolidadoInstance.destroy();
+    window.gridConsolidadoInstance = null;
+  }
+
+  // Limpiar contenedor e inyectar cabecera superior de totales antes del grid
+  contenedor.innerHTML = `
+    <div class="mb-4 flex items-center justify-between px-1">
+      <div class="inline-flex items-center gap-2 bg-blue-50/80 border border-blue-100 px-3 py-1.5 rounded-lg text-xs font-medium text-slate-700 shadow-xs">
+        <svg class="w-4 h-4 text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+        </svg>
+        Total de envíos encontrados: <span class="text-blue-600 font-bold ml-0.5">${totalEnvios}</span>
+      </div>
+    </div>
+    <div id="grid-table-element-consolidado" class="bg-white rounded-xl border border-slate-200/80 shadow-xs overflow-hidden"></div>
   `;
 
-  data.forEach((row) => {
-    const fechaAdm = row.fecha_admision ? row.fecha_admision.split("T")[0] : "-";
-    const fechaEnt = row.fecha_entrega ? row.fecha_entrega.split("T")[0] : "-";
-    const fechaDes = row.fecha_descargo ? row.fecha_descargo.split("T")[0] : "-";
-    const fechaDev = row.fecha_devolucion ? row.fecha_devolucion.split("T")[0] : "-";
+  const gridSubContainer = document.getElementById("grid-table-element-consolidado");
 
-    html += `
-      <tr class="hover:bg-slate-50 transition-colors">
-       <td class="p-2 border-r border-slate-200 font-medium text-slate-800">${row.codigo || "-"}</td>
-        <td class="p-2 border-r border-slate-200 font-medium text-slate-800">${row.hoja_ruta || "-"}</td>
-        <td class="p-2 border-r border-slate-200">${row.doc_emitido || "-"}</td>
-        <td class="p-2 border-r border-slate-200 text-blue-600 font-semibold">${row.guia_admision || "-"}</td>
-        <td class="p-2 border-r border-slate-200 font-mono text-[10px]">${row.codigo_barras || "-"}</td>
-        <td class="p-2 border-r border-slate-200">${row.orden || "-"}</td>
-        <td class="p-2 border-r border-slate-200 font-medium text-slate-900">${row.destinatario || "-"}</td>
-        <td class="p-2 border-r border-slate-200 text-slate-600">${row.direccion || "-"}</td>
-        <td class="p-2 border-r border-slate-200">${row.departamento || "-"}</td>
-        <td class="p-2 border-r border-slate-200">${row.provincia || "-"}</td>
-        <td class="p-2 border-r border-slate-200">${row.distrito || "-"}</td>
-        <td class="p-2 border-r border-slate-200 font-semibold text-indigo-700">${row.nombre_estado || "-"}</td>
-        <td class="p-2 border-r border-slate-200">${row.acceso || "-"}</td>
-        <td class="p-2 border-r border-slate-200">${row.descripcion || "-"}</td>
-        <td class="p-2 border-r border-slate-200">${fechaAdm}</td>
-        <td class="p-2 border-r border-slate-200">${fechaEnt}</td>
-        <td class="p-2 border-r border-slate-200">${fechaDes}</td>
-        <td class="p-2 border-r border-slate-200">${fechaDev}</td>
-        <td class="p-2 border-r border-slate-200 text-amber-600 font-semibold">${row.guia_devolucion || "-"}</td>
-        <td class="p-2 border-r border-slate-200 text-right">${row.peso !== null && row.peso !== undefined ? row.peso : "0.00"}</td>
-        <td class="p-2 text-right">${row.cantidad !== null && row.cantidad !== undefined ? row.cantidad : "0"}</td>
-      </tr>
-    `;
+  // 3. Inicializar Grid.js
+  window.gridConsolidadoInstance = new gridjs.Grid({
+    columns: [
+      "Guia Adm.",
+      "Servicio",
+      "Hoja Ruta",
+      "Doc. Emitido",
+      "Guia Fisica",
+      "Código Barras",
+      "Orden",
+      "Destinatario",
+      "Dirección / Ubigeo",
+      "Departamento",
+      "Provincia",
+      "Distrito",
+      "Estado",
+      "Acceso",
+      "Servicio",
+      "Fecha Admisión",
+      "Fecha Entrega",
+      "Fecha Descargo",
+      "Fecha Devolución",
+      "Guia Dev.",
+      "Peso",
+      "Cantidad",
+    ],
+    data: rowsData,
+    pagination: { 
+      limit: window.limiteTablaConsolidado,
+      summary: true 
+    },
+    search: { placeholder: "Escribe para buscar en el consolidado..." },
+    sort: true,
+    language: {
+      search: { placeholder: "Escribe para buscar..." },
+      pagination: {
+        previous: "Anterior",
+        next: "Siguiente",
+        showing: "Mostrando",
+        of: "de",
+        to: "a",
+        results: "registros",
+      },
+      noRecordsFound: "No se encontraron registros coincidentes",
+    },
+    style: {
+      table: { "font-size": "11px", width: "100%", "white-space": "nowrap" },
+      th: {
+        "background-color": "#f8fafc",
+        color: "#475569",
+        "font-weight": "600",
+        "border-bottom": "1px solid #e2e8f0",
+        padding: "10px 12px",
+      },
+      td: {
+        padding: "8px 12px",
+        "border-bottom": "1px solid #f1f5f9",
+        color: "#334155",
+      },
+    },
   });
 
-  html += `
-        </tbody>
-      </table>
-    </div>
-  `;
+  window.gridConsolidadoInstance.render(gridSubContainer);
 
-  contenedor.innerHTML = html;
+  // 4. Inserción del selector estático de filas (10, 20, 30, Todos) y el pie con Totales
+  window.gridConsolidadoInstance.on('ready', () => {
+    const summaryContainer = gridSubContainer.querySelector(".gridjs-summary");
+    if (summaryContainer && !gridSubContainer.querySelector("#select-grid-limit-consolidado")) {
+      const selectHtml = `
+        <span class="ml-4 inline-flex items-center gap-1 text-xs text-slate-500">
+          Mostrar:
+          <select id="select-grid-limit-consolidado" class="border border-slate-300 rounded px-1.5 py-0.5 text-xs bg-white focus:outline-none focus:ring-1 focus:ring-blue-500 cursor-pointer">
+            <option value="5" ${window.limiteTablaConsolidado === 5 ? 'selected' : ''}>5</option>
+            <option value="10" ${window.limiteTablaConsolidado === 10 ? 'selected' : ''}>10</option>
+            <option value="15" ${window.limiteTablaConsolidado === 15 ? 'selected' : ''}>15</option>
+            <option value="20" ${window.limiteTablaConsolidado === 20 ? 'selected' : ''}>20</option>
+            <option value="30" ${window.limiteTablaConsolidado === 30 ? 'selected' : ''}>30</option>
+            <option value="10000" ${window.limiteTablaConsolidado === 10000 ? 'selected' : ''}>Todos</option>
+          </select>
+          filas
+        </span>
+      `;
+      summaryContainer.insertAdjacentHTML("beforeend", selectHtml);
+
+      const selectEl = gridSubContainer.querySelector("#select-grid-limit-consolidado");
+      if (selectEl) {
+        selectEl.addEventListener("change", (e) => {
+          const valor = e.target.value;
+          window.limiteTablaConsolidado = parseInt(valor, 10);
+          
+          window.gridConsolidadoInstance
+            .updateConfig({
+              pagination: { limit: window.limiteTablaConsolidado },
+            })
+            .forceRender();
+        });
+      }
+    }
+
+    // Agregar la fila de totales generales al pie de la tabla de Grid.js si no existe
+    const tableEl = gridSubContainer.querySelector("table");
+    if (tableEl && !tableEl.querySelector("tfoot")) {
+      const tfoot = document.createElement("tfoot");
+      tfoot.className = "bg-slate-100 font-bold text-slate-800 border-t border-slate-200";
+      tfoot.innerHTML = `
+        <tr>
+          <td colspan="20" class="p-2.5 text-right tracking-wide">TOTALES GENERALES:</td>
+          <td class="p-2.5 border-r border-slate-200 text-right text-amber-700">${totalPeso.toFixed(2)}</td>
+          <td class="p-2.5 text-right text-blue-700">${totalCantidad}</td>
+        </tr>
+      `;
+      tableEl.appendChild(tfoot);
+    }
+  });
 };
-
 // ==========================================
 // 5. EVENTOS GLOBALES (CLICKS Y CAMBIOS)
 // ==========================================
