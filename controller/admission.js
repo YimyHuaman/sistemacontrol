@@ -68,8 +68,12 @@ function cambiarModoOperacion() {
   const radioBarras = document.getElementById("radio-generar-barras");
   const radioExcel = document.getElementById("radio-exportar-excel");
   const btnGenerarBarras = document.getElementById("btn-generar-barras");
-  const fieldsetTipoServicio = document.getElementById("fieldset-tipo-servicio");
-  const selectTipoServicio = document.getElementById("input-tipo-servicio-exportar");
+  const fieldsetTipoServicio = document.getElementById(
+    "fieldset-tipo-servicio",
+  );
+  const selectTipoServicio = document.getElementById(
+    "input-tipo-servicio-exportar",
+  );
   const fieldsetGuia = document.getElementById("fieldset-guia");
   const inputSim = document.getElementById("input-sim");
   const btnExportarExcel = document.getElementById("btn-exportar-excel");
@@ -98,14 +102,25 @@ function cambiarModoOperacion() {
 
     if (fieldsetTipoServicio) {
       fieldsetTipoServicio.classList.add("bg-slate-100", "opacity-60");
-      fieldsetTipoServicio.classList.remove("bg-white", "opacity-100", "border-blue-500", "ring-1", "ring-blue-500");
+      fieldsetTipoServicio.classList.remove(
+        "bg-white",
+        "opacity-100",
+        "border-blue-500",
+        "ring-1",
+        "ring-blue-500",
+      );
     }
 
     if (fieldsetGuia) {
       fieldsetGuia.classList.add("bg-slate-100", "opacity-60");
-      fieldsetGuia.classList.remove("bg-white", "opacity-100", "border-blue-500", "ring-1", "ring-blue-500");
+      fieldsetGuia.classList.remove(
+        "bg-white",
+        "opacity-100",
+        "border-blue-500",
+        "ring-1",
+        "ring-blue-500",
+      );
     }
-
   } else if (radioExcel && radioExcel.checked) {
     // --- MODO 2: EXPORTAR EXCEL ACTIVO ---
     if (typeof cargarTiposDeServicio === "function") {
@@ -596,6 +611,7 @@ function eliminarEnvioTemporal(idTemporal) {
   renderizarTablaTemporal();
 }
 // Función asíncrona principal encargada de guardar de forma definitiva la guía y sus documentos asociados en Supabase
+// Función asíncrona principal encargada de guardar de forma definitiva la guía y sus documentos asociados en Supabase
 async function guardarGuiaYDocumentosDefinitivo() {
   // 1. Validación: asegura que el arreglo temporal contenga al menos un envío antes de proceder
   if (
@@ -609,6 +625,23 @@ async function guardarGuiaYDocumentosDefinitivo() {
         "error",
       );
     }
+    return;
+  }
+
+  // 2. Validación y captura del campo de la Guía Física (Guía de Recepción)
+  const inputGuiaFisica = document.getElementById("input-guia-recepcion");
+  const guiaFisica = inputGuiaFisica
+    ? inputGuiaFisica.value.trim().toUpperCase()
+    : "";
+
+  if (!guiaFisica) {
+    if (typeof window.mostrarToast === "function") {
+      window.mostrarToast(
+        "Debe ingresar el número de Guía de Recepción (Guía Física).",
+        "error",
+      );
+    }
+    if (inputGuiaFisica) inputGuiaFisica.focus();
     return;
   }
 
@@ -698,7 +731,7 @@ async function guardarGuiaYDocumentosDefinitivo() {
         ? ultimoCorrelativo[0].correlativo + 1
         : 1;
 
-    // 5. Insertar el encabezado de la guía maestra (SOLO campos permitidos: tipo, correlativo, cantidad, sucursal_id)
+    // 5. Insertar el encabezado de la guía maestra incluyendo el campo 'guia_fisica'
     const { data: guiaInsertada, error: errGuia } = await window.supabaseClient
       .from("guia")
       .insert([
@@ -707,6 +740,7 @@ async function guardarGuiaYDocumentosDefinitivo() {
           correlativo: siguienteCorrelativo,
           cantidad: listaEnviosTemporal.length,
           sucursal_id: sucursalId,
+          guia_fisica: guiaFisica, // <--- Campo físico de la guía de recepción
         },
       ])
       .select()
@@ -789,6 +823,11 @@ async function guardarGuiaYDocumentosDefinitivo() {
 
       const inputHojaRuta = document.getElementById("input-hoja-ruta");
       if (inputHojaRuta) inputHojaRuta.value = "";
+
+      const inputGuiaRecepcion = document.getElementById(
+        "input-guia-recepcion",
+      );
+      if (inputGuiaRecepcion) inputGuiaRecepcion.value = "";
 
       if (typeof renderizarTablaTemporal === "function") {
         renderizarTablaTemporal();
@@ -1182,7 +1221,7 @@ window.exportarYActualizarGuiaSim = async function (
   numeroGuiaSimInput,
 ) {
   console.log(
-    "⚡ [Inicio] Procesando exportación con formato de 3 decimales fijos en PESO...",
+    "⚡ [Inicio] Procesando exportación con orden correlativo y notificaciones Toast...",
   );
 
   try {
@@ -1192,7 +1231,9 @@ window.exportarYActualizarGuiaSim = async function (
       (typeof supabase !== "undefined" ? supabase : null);
 
     if (!clienteSupabase) {
-      alert("⚠️️ No se encontró la instancia de Supabase.");
+      if (typeof window.mostrarToast === "function") {
+        window.mostrarToast("⚠ No se encontró la instancia de Supabase.", "error");
+      }
       return;
     }
 
@@ -1206,11 +1247,15 @@ window.exportarYActualizarGuiaSim = async function (
     const prefijoSucursal = sesionUsuario.sucursal?.iniciales || "";
 
     if (!sucursalId) {
-      alert("⚠️ No se encontró la sucursal activa en la sesión.");
+      if (typeof window.mostrarToast === "function") {
+        window.mostrarToast("⚠️ No se encontró la sucursal activa en la sesión.", "error");
+      }
       return;
     }
     if (!prefijoSucursal) {
-      alert("⚠️ No se encontraron las iniciales de la sucursal en la sesión.");
+      if (typeof window.mostrarToast === "function") {
+        window.mostrarToast("⚠️ No se encontraron las iniciales de la sucursal en la sesión.", "error");
+      }
       return;
     }
 
@@ -1221,17 +1266,14 @@ window.exportarYActualizarGuiaSim = async function (
     }
 
     if (!numeroGuiaSimInput) {
-      const msg =
-        "⚠️ Por favor, ingresa el número de Guía SIM en la caja de texto.";
+      const msg = "⚠️ Por favor, ingresa el número de Guía SIM en la caja de texto.";
       if (typeof window.mostrarToast === "function") {
         window.mostrarToast(msg, "warning");
-      } else {
-        alert(msg);
       }
       return;
     }
 
-    // 2. Capturar automáticamente el Tipo de Servicio usando el TEXTO visible (ej. "SEL")
+    // 2. Capturar automáticamente el Tipo de Servicio usando el TEXTO visible
     if (!tipoServicioFiltro) {
       const selectElem = document.getElementById(
         "input-tipo-servicio-exportar",
@@ -1243,11 +1285,9 @@ window.exportarYActualizarGuiaSim = async function (
     }
 
     if (!tipoServicioFiltro || tipoServicioFiltro === "Seleccione...") {
-      const msg = "⚠️️ Por favor, selecciona el tipo de servicio.";
+      const msg = "⚠ Por favor, selecciona el tipo de servicio.";
       if (typeof window.mostrarToast === "function") {
         window.mostrarToast(msg, "warning");
-      } else {
-        alert(msg);
       }
       return;
     }
@@ -1268,9 +1308,7 @@ window.exportarYActualizarGuiaSim = async function (
     if (errorVista)
       throw new Error("Error al consultar la vista: " + errorVista.message);
 
-    console.log("📦 Datos totales de la sucursal en la vista:", envios);
-
-    // 4. Filtrar por fecha de hoy y por tipo de servicio usando las columnas estandarizadas
+    // 4. Filtrar por fecha de hoy y por tipo de servicio
     const enviosFiltrados = (envios || []).filter((item) => {
       const fechaDoc = item.fecha_ingreso || item.fecha;
       if (!fechaDoc) return false;
@@ -1290,281 +1328,22 @@ window.exportarYActualizarGuiaSim = async function (
       return esHoy && coincideServicio;
     });
 
-    console.log("🎯 Datos filtrados para hoy y servicio:", enviosFiltrados);
-
     if (enviosFiltrados.length === 0) {
       const msgNoReg = `⚠️ No hay registros para el tipo de servicio ${tipoServicioFiltro} el día de hoy.`;
       if (typeof window.mostrarToast === "function") {
         window.mostrarToast(msgNoReg, "warning");
-      } else {
-        alert(msgNoReg);
       }
       return;
     }
 
-    // 5. Verificación previa de duplicados
-    const sucPaddedCheck = String(prefijoSucursal)
-      .toUpperCase()
-      .slice(0, 3)
-      .padEnd(3, "X");
-    const guiaSimPaddedCheck = String(numeroGuiaSimInput)
-      .slice(-5)
-      .padStart(5, "0");
-    const primerOrdenCheck = String(enviosFiltrados[0].orden || 1).padStart(
-      5,
-      "0",
-    );
-    const codigoPruebaCheck = `${sucPaddedCheck}${guiaSimPaddedCheck}${primerOrdenCheck}`;
-
-    const { data: existeCodigo } = await clienteSupabase
-      .from("documento")
-      .select("id")
-      .eq("codigo_barras", codigoPruebaCheck)
-      .maybeSingle();
-
-    if (existeCodigo) {
-      const msgDuplicado = `⚠️ La Guía SIM "${numeroGuiaSimInput}" (o su código de barras) ya existe. Por favor, ingresa otro número.`;
-      if (typeof window.mostrarToast === "function") {
-        window.mostrarToast(msgDuplicado, "error");
-      } else {
-        alert(msgDuplicado);
-      }
-      return;
-    }
-
-    let actualizadosExitosos = 0;
-    const operacionesFallidas = [];
-    const datosParaExcel = [];
-
-    for (const [index, item] of enviosFiltrados.entries()) {
-      const sucPadded = String(prefijoSucursal)
-        .toUpperCase()
-        .slice(0, 3)
-        .padEnd(3, "X");
-      const guiaSimPadded = String(numeroGuiaSimInput)
-        .slice(-5)
-        .padStart(5, "0");
-
-      const ordenValor = item.orden || index + 1;
-      const ordenPadded = String(ordenValor).padStart(5, "0");
-
-      const codigoBarras14 = `${sucPadded}${guiaSimPadded}${ordenPadded}`;
-      const idDocumento = item.id_documento || item.id;
-
-      if (!idDocumento) {
-        throw new Error(
-          "El registro actual no posee un ID de documento válido.",
-        );
-      }
-
-      // Doble update: codigo_barras y guia_sim en la tabla documento
-      const { data: updateData, error: errorUpdate } = await clienteSupabase
-        .from("documento")
-        .update({
-          codigo_barras: codigoBarras14,
-          guia_sim: numeroGuiaSimInput,
-        })
-        .eq("id", idDocumento)
-        .select();
-
-      if (errorUpdate) {
-        operacionesFallidas.push({
-          id: idDocumento,
-          error: errorUpdate.message,
-        });
-        break;
-      } else if (!updateData || updateData.length === 0) {
-        operacionesFallidas.push({
-          id: idDocumento,
-          error: "No se encontró el registro o RLS bloqueó el update.",
-        });
-        break;
-      } else {
-        actualizadosExitosos++;
-      }
-
-      // Formatear el peso asegurando 3 decimales exactos (ej. 0.04 -> "0.040")
-      let pesoFormateado = "";
-      if (item.peso !== null && item.peso !== undefined && item.peso !== "") {
-        const numeroPeso = parseFloat(item.peso);
-        pesoFormateado = isNaN(numeroPeso) ? item.peso : numeroPeso.toFixed(3);
-      }
-
-      datosParaExcel.push({
-        ORDEN: ordenPadded,
-        DOCUMENTO: item.doc_emitido || "",
-        DESTINATARIO: item.destinatario || "",
-        DIRECCION: item.direccion || "",
-        DEPARTAMENTO: item.departamento || "",
-        PROVINCIA: item.provincia || "",
-        DISTRITO: item.distrito || "",
-        PESO: pesoFormateado,
-      });
-    }
-
-    if (operacionesFallidas.length > 0) {
-      const msgError = `⚠️ La Guía SIM ingresada ya existe o está en uso. Por favor, verifique el número.`;
-      if (typeof window.mostrarToast === "function") {
-        window.mostrarToast(msgError, "error");
-      } else {
-        alert("❌ " + msgError);
-      }
-      return;
-    }
-
-    // Descarga del Excel sin bordes y con formato forzado de 3 decimales
-    descargarExcelSinBordes(
-      datosParaExcel,
-      `Envios_${tipoServicioFiltro}_${fechaHoyStr}.xls`,
-    );
-
-    if (typeof window.mostrarToast === "function") {
-      window.mostrarToast("¡Proceso completado con éxito!", "success");
-    } else {
-      alert(
-        `✅ ¡Se actualizaron y exportaron ${actualizadosExitosos} registros con éxito!`,
-      );
-    }
-
-    if (typeof window.listarEnviosDiarios === "function") {
-      await window.listarEnviosDiarios();
-    }
-  } catch (err) {
-    console.error("❌ Error en la exportación:", err);
-    if (typeof window.mostrarToast === "function") {
-      window.mostrarToast("Error en el proceso: " + err.message, "error");
-    } else {
-      alert("❌ Ocurrió un error: " + err.message);
-    }
-  }
-};
-
-window.exportarYActualizarGuiaSim = async function (
-  tipoServicioFiltro,
-  numeroGuiaSimInput,
-) {
-  console.log(
-    "⚡ [Inicio] Procesando exportación con formato de 3 decimales fijos en PESO...",
-  );
-
-  try {
-    const clienteSupabase =
-      window.supabaseClient ||
-      window.supabase ||
-      (typeof supabase !== "undefined" ? supabase : null);
-
-    if (!clienteSupabase) {
-      alert("⚠️️ No se encontró la instancia de Supabase.");
-      return;
-    }
-
-    const sesionUsuario = JSON.parse(
-      sessionStorage.getItem("sesion_usuario") || "{}",
-    );
-    const sucursalId =
-      sesionUsuario.sucursal?.id ||
-      sessionStorage.getItem("sucursal_id") ||
-      null;
-    const prefijoSucursal = sesionUsuario.sucursal?.iniciales || "";
-
-    if (!sucursalId) {
-      alert("⚠️ No se encontró la sucursal activa en la sesión.");
-      return;
-    }
-    if (!prefijoSucursal) {
-      alert("⚠️ No se encontraron las iniciales de la sucursal en la sesión.");
-      return;
-    }
-
-    // 1. Capturar automáticamente la Guía SIM si viene vacía
-    if (!numeroGuiaSimInput) {
-      const inputElem = document.getElementById("input-sim");
-      numeroGuiaSimInput = inputElem ? inputElem.value.trim() : "";
-    }
-
-    if (!numeroGuiaSimInput) {
-      const msg =
-        "⚠️ Por favor, ingresa el número de Guía SIM en la caja de texto.";
-      if (typeof window.mostrarToast === "function") {
-        window.mostrarToast(msg, "warning");
-      } else {
-        alert(msg);
-      }
-      return;
-    }
-
-    // 2. Capturar automáticamente el Tipo de Servicio usando el TEXTO visible (ej. "SEL")
-    if (!tipoServicioFiltro) {
-      const selectElem = document.getElementById(
-        "input-tipo-servicio-exportar",
-      );
-      if (selectElem && selectElem.selectedIndex >= 0) {
-        tipoServicioFiltro =
-          selectElem.options[selectElem.selectedIndex].text.trim();
-      }
-    }
-
-    if (!tipoServicioFiltro || tipoServicioFiltro === "Seleccione...") {
-      const msg = "⚠️️ Por favor, selecciona el tipo de servicio.";
-      if (typeof window.mostrarToast === "function") {
-        window.mostrarToast(msg, "warning");
-      } else {
-        alert(msg);
-      }
-      return;
-    }
-
-    // Obtener fecha actual de hoy (YYYY-MM-DD)
-    const fechaEquipo = new Date();
-    const anio = fechaEquipo.getFullYear();
-    const mes = String(fechaEquipo.getMonth() + 1).padStart(2, "0");
-    const dia = String(fechaEquipo.getDate()).padStart(2, "0");
-    const fechaHoyStr = `${anio}-${mes}-${dia}`;
-
-    // 3. Consultar la vista de envíos diarios filtrando por sucursal
-    const { data: envios, error: errorVista } = await clienteSupabase
-      .from("vista_envios_diarios")
-      .select("*")
-      .eq("sucursal_id", parseInt(sucursalId));
-
-    if (errorVista)
-      throw new Error("Error al consultar la vista: " + errorVista.message);
-
-    console.log("📦 Datos totales de la sucursal en la vista:", envios);
-
-    // 4. Filtrar por fecha de hoy y por tipo de servicio usando las columnas estandarizadas
-    const enviosFiltrados = (envios || []).filter((item) => {
-      const fechaDoc = item.fecha_ingreso || item.fecha;
-      if (!fechaDoc) return false;
-
-      const fechaItemStr = String(fechaDoc).substring(0, 10);
-      const esHoy = fechaItemStr === fechaHoyStr;
-
-      const servicioItem = String(
-        item.tipo_servicio_codigo || item.codigo || "",
-      )
-        .trim()
-        .toUpperCase();
-
-      const coincideServicio =
-        servicioItem === String(tipoServicioFiltro).trim().toUpperCase();
-
-      return esHoy && coincideServicio;
+    // 🎯 ORDENAR ESTRICTAMENTE POR EL CAMPO 'orden' (1, 2, 3...)
+    enviosFiltrados.sort((a, b) => {
+      const ordenA = parseInt(a.orden) || 0;
+      const ordenB = parseInt(b.orden) || 0;
+      return ordenA - ordenB;
     });
 
-    console.log("🎯 Datos filtrados para hoy y servicio:", enviosFiltrados);
-
-    if (enviosFiltrados.length === 0) {
-      const msgNoReg = `⚠️ No hay registros para el tipo de servicio ${tipoServicioFiltro} el día de hoy.`;
-      if (typeof window.mostrarToast === "function") {
-        window.mostrarToast(msgNoReg, "warning");
-      } else {
-        alert(msgNoReg);
-      }
-      return;
-    }
-
-    // 5. Verificación previa de duplicados
+    // 5. Verificación previa de duplicados usando el primer elemento ordenado
     const sucPaddedCheck = String(prefijoSucursal)
       .toUpperCase()
       .slice(0, 3)
@@ -1573,7 +1352,7 @@ window.exportarYActualizarGuiaSim = async function (
       .slice(-5)
       .padStart(5, "0");
     const primerOrdenCheck = String(enviosFiltrados[0].orden || 1).padStart(
-      5,
+      6,
       "0",
     );
     const codigoPruebaCheck = `${sucPaddedCheck}${guiaSimPaddedCheck}${primerOrdenCheck}`;
@@ -1588,8 +1367,6 @@ window.exportarYActualizarGuiaSim = async function (
       const msgDuplicado = `⚠️ La Guía SIM "${numeroGuiaSimInput}" (o su código de barras) ya existe. Por favor, ingresa otro número.`;
       if (typeof window.mostrarToast === "function") {
         window.mostrarToast(msgDuplicado, "error");
-      } else {
-        alert(msgDuplicado);
       }
       return;
     }
@@ -1607,19 +1384,17 @@ window.exportarYActualizarGuiaSim = async function (
         .slice(-5)
         .padStart(5, "0");
 
-      const ordenValor = item.orden || index + 1;
+      const ordenValor = item.orden !== null && item.orden !== undefined ? item.orden : index + 1;
       const ordenPadded = String(ordenValor).padStart(6, "0");
 
       const codigoBarras14 = `${sucPadded}${guiaSimPadded}${ordenPadded}`;
       const idDocumento = item.id_documento || item.id;
 
       if (!idDocumento) {
-        throw new Error(
-          "El registro actual no posee un ID de documento válido.",
-        );
+        throw new Error("El registro actual no posee un ID de documento válido.");
       }
 
-      // Doble update: codigo_barras y guia_sim en la tabla documento
+      // Actualizar en la tabla documento
       const { data: updateData, error: errorUpdate } = await clienteSupabase
         .from("documento")
         .update({
@@ -1630,22 +1405,15 @@ window.exportarYActualizarGuiaSim = async function (
         .select();
 
       if (errorUpdate) {
-        operacionesFallidas.push({
-          id: idDocumento,
-          error: errorUpdate.message,
-        });
+        operacionesFallidas.push({ id: idDocumento, error: errorUpdate.message });
         break;
       } else if (!updateData || updateData.length === 0) {
-        operacionesFallidas.push({
-          id: idDocumento,
-          error: "No se encontró el registro o RLS bloqueó el update.",
-        });
+        operacionesFallidas.push({ id: idDocumento, error: "No se encontró el registro o RLS bloqueó el update." });
         break;
       } else {
         actualizadosExitosos++;
       }
 
-      // Formatear el peso asegurando 3 decimales exactos (ej. 0.04 -> "0.040")
       let pesoFormateado = "";
       if (item.peso !== null && item.peso !== undefined && item.peso !== "") {
         const numeroPeso = parseFloat(item.peso);
@@ -1668,24 +1436,18 @@ window.exportarYActualizarGuiaSim = async function (
       const msgError = `⚠️ La Guía SIM ingresada ya existe o está en uso. Por favor, verifique el número.`;
       if (typeof window.mostrarToast === "function") {
         window.mostrarToast(msgError, "error");
-      } else {
-        alert("❌ " + msgError);
       }
       return;
     }
 
-    // Descarga del Excel sin bordes y con formato forzado de 3 decimales
+    // Descarga del Excel ordenado
     descargarExcelSinBordes(
       datosParaExcel,
       `Envios_${tipoServicioFiltro}_${fechaHoyStr}.xls`,
     );
 
     if (typeof window.mostrarToast === "function") {
-      window.mostrarToast("¡Proceso completado con éxito!", "success");
-    } else {
-      alert(
-        `✅ ¡Se actualizaron y exportaron ${actualizadosExitosos} registros con éxito!`,
-      );
+      window.mostrarToast(`¡Se actualizaron y exportaron ${actualizadosExitosos} registros con éxito!`, "success");
     }
 
     if (typeof window.listarEnviosDiarios === "function") {
@@ -1695,8 +1457,6 @@ window.exportarYActualizarGuiaSim = async function (
     console.error("❌ Error en la exportación:", err);
     if (typeof window.mostrarToast === "function") {
       window.mostrarToast("Error en el proceso: " + err.message, "error");
-    } else {
-      alert("❌ Ocurrió un error: " + err.message);
     }
   }
 };

@@ -59,11 +59,12 @@ async function obtenerCarterosDesdeSupabase() {
 
   try {
     // 1. Consultar carteros con cargo MENSAJERO
-    const { data: carterosData, error: errorCarteros } = await window.supabaseClient
-      .from("colaborador")
-      .select("*")
-      .eq("cargo", "MENSAJERO")
-      .order("id", { ascending: true });
+    const { data: carterosData, error: errorCarteros } =
+      await window.supabaseClient
+        .from("colaborador")
+        .select("*")
+        .eq("cargo", "MENSAJERO")
+        .order("id", { ascending: true });
 
     if (errorCarteros) throw errorCarteros;
 
@@ -71,22 +72,28 @@ async function obtenerCarterosDesdeSupabase() {
     const hoyInicio = new Date();
     hoyInicio.setHours(0, 0, 0, 0);
 
-    const { data: entregasHoy, error: errorEntregas } = await window.supabaseClient
-      .from("entregas")
-      .select("*")
-      .gte("fecha", hoyInicio.toISOString());
+    const { data: entregasHoy, error: errorEntregas } =
+      await window.supabaseClient
+        .from("entregas")
+        .select("*")
+        .gte("fecha", hoyInicio.toISOString());
 
     if (errorEntregas) throw errorEntregas;
 
     // 3. Mapear y cruzar datos (si ya tiene entrega hoy, se marca como cerrado automáticamente)
-    carterosJornada = (carterosData || []).map(item => {
-      const entregaHoy = (entregasHoy || []).find(e => e.colaborador_id === item.id);
+    carterosJornada = (carterosData || []).map((item) => {
+      const entregaHoy = (entregasHoy || []).find(
+        (e) => e.colaborador_id === item.id,
+      );
       const estaCerrado = !!entregaHoy;
-      
+
       let horaFormateada = null;
       if (entregaHoy && entregaHoy.fecha) {
         const fechaObj = new Date(entregaHoy.fecha);
-        horaFormateada = fechaObj.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        horaFormateada = fechaObj.toLocaleTimeString([], {
+          hour: "2-digit",
+          minute: "2-digit",
+        });
       }
 
       return {
@@ -98,12 +105,11 @@ async function obtenerCarterosDesdeSupabase() {
         devueltos: entregaHoy ? entregaHoy.devueltos : 0,
         total: entregaHoy ? entregaHoy.total : 0,
         hora: horaFormateada,
-        tipoCierre: estaCerrado ? "MANUAL" : null
+        tipoCierre: estaCerrado ? "MANUAL" : null,
       };
     });
 
     renderizarTarjetasCarteros();
-
   } catch (error) {
     console.error("Error al cargar carteros:", error.message);
     if (window.mostrarToast) {
@@ -149,41 +155,64 @@ function calcularTotalModal() {
 async function guardarRendicionCartero(e) {
   e.preventDefault();
 
-  const entregados = parseInt(document.getElementById("input-entregados").value) || 0;
-  const devueltos = parseInt(document.getElementById("input-devueltos").value) || 0;
+  // 1. Bloquear de inmediato el botón para evitar doble clic accidental
+  const btnSubmit = e.target.querySelector('button[type="submit"]');
+  const textoOriginalBtn = btnSubmit ? btnSubmit.innerText : "Guardar Cierre";
+
+  if (btnSubmit) {
+    btnSubmit.disabled = true;
+    btnSubmit.innerText = "Guardando...";
+  }
+
+  const entregados =
+    parseInt(document.getElementById("input-entregados").value) || 0;
+  const devueltos =
+    parseInt(document.getElementById("input-devueltos").value) || 0;
   const totalCalculado = entregados + devueltos;
 
-  if (!carteroEnEdicion) return;
+  if (!carteroEnEdicion) {
+    if (btnSubmit) {
+      btnSubmit.disabled = false;
+      btnSubmit.innerText = textoOriginalBtn;
+    }
+    return;
+  }
 
   if (typeof mostrarSpinner === "function") {
     mostrarSpinner("Verificando y guardando cierre...");
   }
 
   try {
-    // 1. Obtener la fecha actual en formato YYYY-MM-DD para comparar solo el día de hoy
+    // 2. Obtener la fecha actual (00:00:00) para validar el día en curso
     const hoyInicio = new Date();
     hoyInicio.setHours(0, 0, 0, 0);
 
-    // 2. Validar si ya existe un registro para este cartero en el día actual
-    const { data: registrosExistentes, error: errorConsulta } = await window.supabaseClient
-      .from("entregas")
-      .select("id, fecha")
-      .eq("colaborador_id", carteroEnEdicion.id)
-      .gte("fecha", hoyInicio.toISOString());
+    // 3. Consulta previa: Validar si ya existe un registro hoy para este cartero
+    const { data: registrosExistentes, error: errorConsulta } =
+      await window.supabaseClient
+        .from("entregas")
+        .select("id, fecha")
+        .eq("colaborador_id", carteroEnEdicion.id)
+        .gte("fecha", hoyInicio.toISOString());
 
     if (errorConsulta) throw errorConsulta;
 
     if (registrosExistentes && registrosExistentes.length > 0) {
       if (window.mostrarToast) {
-        window.mostrarToast("¡Ya existe un registro de cierre para este cartero hoy!", "error");
+        window.mostrarToast(
+          "¡Ya existe un registro de cierre para este cartero hoy!",
+          "error",
+        );
       } else {
-        alert("Ya existe un registro de cierre para este cartero el día de hoy.");
+        alert(
+          "Ya existe un registro de cierre para este cartero el día de hoy.",
+        );
       }
       cerrarModalRendicion();
       return;
     }
 
-    // 3. Insertar el registro enviando explícitamente el 'total'
+    // 4. Inserción en Supabase con total explícito
     const { error: errorSupabase } = await window.supabaseClient
       .from("entregas")
       .insert([
@@ -191,14 +220,22 @@ async function guardarRendicionCartero(e) {
           colaborador_id: carteroEnEdicion.id,
           entregados: entregados,
           devueltos: devueltos,
-          total: totalCalculado, // <--- Enviamos el total calculado para evitar nulos
-          fecha: new Date().toISOString()
-        }
+          total: totalCalculado,
+          fecha: new Date().toISOString(),
+        },
       ]);
 
-    if (errorSupabase) throw errorSupabase;
+    if (errorSupabase) {
+      // Capturar si la BD bloqueó un intento de duplicado concurrente
+      if (errorSupabase.code === "23505") {
+        throw new Error(
+          "Ya existe un registro registrado para hoy en la base de datos.",
+        );
+      }
+      throw errorSupabase;
+    }
 
-    // 4. Actualizar el estado local en la tarjeta
+    // 5. Actualizar estado local en la interfaz
     const ahora = new Date();
     carteroEnEdicion.entregados = entregados;
     carteroEnEdicion.devueltos = devueltos;
@@ -216,7 +253,6 @@ async function guardarRendicionCartero(e) {
 
     cerrarModalRendicion();
     renderizarTarjetasCarteros();
-
   } catch (error) {
     console.error("Error al guardar la rendición:", error.message);
     if (window.mostrarToast) {
@@ -225,6 +261,11 @@ async function guardarRendicionCartero(e) {
       alert("Hubo un error al guardar en la base de datos: " + error.message);
     }
   } finally {
+    // Restaurar estado del botón y ocultar cargador
+    if (btnSubmit) {
+      btnSubmit.disabled = false;
+      btnSubmit.innerText = textoOriginalBtn;
+    }
     if (typeof ocultarSpinner === "function") {
       ocultarSpinner();
     }
@@ -247,21 +288,21 @@ function renderizarTarjetasCarteros() {
 
   contenedor.innerHTML = "";
 
-  // 1. Filtrar primero por el texto de búsqueda si el usuario escribió algo
-  const carterosFiltrados = carterosJornada.filter(c => 
-    c.nombre.toLowerCase().includes(textoBusquedaFiltro)
+  // 1. Filtrar por el texto de búsqueda
+  const carterosFiltrados = carterosJornada.filter((c) =>
+    c.nombre.toLowerCase().includes(textoBusquedaFiltro),
   );
 
   if (carterosFiltrados.length === 0) {
     contenedor.innerHTML = `
-      <div class="col-span-full bg-white p-4 rounded-xl border border-slate-200 text-center text-slate-500 text-xs">
+      <div class="col-span-full bg-white p-3 rounded-xl border border-slate-200 text-center text-slate-500 text-xs">
         No se encontraron carteros que coincidan con la búsqueda.
       </div>
     `;
     return;
   }
 
-  // 2. ORDENAR: Priorizar los que están en estado "pendiente" primero
+  // 2. ORDENAR: Pendientes primero
   const carterosOrdenados = [...carterosFiltrados].sort((a, b) => {
     if (a.estado === "pendiente" && b.estado !== "pendiente") return -1;
     if (a.estado !== "pendiente" && b.estado === "pendiente") return 1;
@@ -272,54 +313,65 @@ function renderizarTarjetasCarteros() {
     const estaCerrado = c.estado === "cerrado";
 
     contenedor.innerHTML += `
-      <div class="bg-white p-3 rounded-xl shadow-sm border ${estaCerrado ? "bg-slate-50/70 border-slate-200 opacity-80" : "border-slate-200 hover:border-red-300"} transition flex flex-col justify-between">
+      <div class="bg-white p-2 rounded-xl shadow-xs border ${estaCerrado ? "bg-slate-50/70 border-slate-200 opacity-80" : "border-slate-200 hover:border-red-300"} transition flex flex-col justify-between h-full text-center">
         <div>
-          <!-- Cabecera de la Card -->
-          <div class="flex justify-between items-center mb-1.5">
-            <span class="text-[9px] font-semibold uppercase text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded">Cartero #${c.id}</span>
+          <!-- Cabecera compacta de la tarjeta -->
+          <div class="flex justify-between items-center mb-1.5 gap-1">
+            <span class="text-[8px] font-bold text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded uppercase truncate">#${c.id}</span>
             
-            <!-- Etiqueta de Estado: ROJO para pendiente, VERDE para cerrado -->
-            <span class="text-[9px] font-semibold px-2 py-0.5 rounded ${
+            <span class="text-[8px] font-semibold px-1.5 py-0.5 rounded leading-none ${
               estaCerrado
                 ? c.tipoCierre === "AUTOMATICO_7PM"
                   ? "bg-amber-100 text-amber-800"
                   : "bg-emerald-100 text-emerald-700 border border-emerald-200"
                 : "bg-red-100 text-red-600 border border-red-200 animate-pulse"
             }">
-              ${estaCerrado ? (c.tipoCierre === "AUTOMATICO_7PM" ? "Cerrado 7 PM" : "Cerrado") : "Pendiente"}
+              ${estaCerrado ? (c.tipoCierre === "AUTOMATICO_7PM" ? "7 PM" : "Cerrado") : "Pendiente"}
             </span>
           </div>
-          
-          <h3 class="text-xs font-bold text-slate-800 mb-2 truncate" title="${c.nombre}">${c.nombre}</h3>
 
+          <!-- Avatar / Imagen + Nombre centrados -->
+          <div class="flex flex-col items-center justify-center my-1.5 gap-1">
+            <div class="w-8 h-8 flex-shrink-0 bg-blue-50 border border-blue-100 rounded-full overflow-hidden flex items-center justify-center p-0.5 shadow-xs">
+              <img src="resources/avatar.png" alt="Avatar" class="w-full h-full object-cover">
+            </div>
+            <h3 class="text-[10px] font-bold text-slate-800 leading-tight line-clamp-2 px-1" title="${c.nombre}">
+              ${c.nombre}
+            </h3>
+          </div>
+
+          <!-- Resumen si ya rindió -->
           ${
             estaCerrado
               ? `
-            <div class="text-[10px] text-slate-600 space-y-0.5 bg-white p-2 rounded-lg border border-slate-200 mb-2">
+            <div class="text-[9px] text-slate-600 space-y-0.5 bg-slate-50 p-1.5 rounded-md border border-slate-200/80 my-1.5 text-left">
               <div class="flex justify-between"><span>Entregados:</span> <b class="text-slate-800">${c.entregados}</b></div>
               <div class="flex justify-between"><span>Devueltos:</span> <b class="text-slate-800">${c.devueltos}</b></div>
-              <div class="flex justify-between border-t pt-0.5 mt-0.5 font-medium text-slate-700"><span>Total:</span> <b class="text-blue-600">${c.total}</b></div>
-              <div class="flex justify-between text-slate-400 pt-0.5 border-t text-[9px]"><span>Hora:</span> <span>${c.hora}</span></div>
+              <div class="flex justify-between border-t pt-0.5 font-semibold text-slate-700"><span>Total:</span> <b class="text-blue-600">${c.total}</b></div>
+              <div class="flex justify-between text-slate-400 text-[8px] border-t pt-0.5"><span>Hora:</span> <span>${c.hora}</span></div>
             </div>
           `
               : ""
           }
         </div>
 
-        ${
-          !estaCerrado
-            ? `
-          <button onclick="abrirModalRendicion(${c.id})" 
-            class="w-full mt-2 py-1.5 bg-red-50 text-red-600 font-medium text-[11px] rounded-lg hover:bg-red-600 hover:text-white transition flex items-center justify-center gap-1 shadow-xs border border-red-100">
-            <i data-lucide="package-check" class="w-3 h-3"></i> Registrar Cierre
-          </button>
-        `
-            : `
-          <div class="text-center text-[9px] text-emerald-600 font-medium py-0.5 flex items-center justify-center gap-1">
-            <i data-lucide="check-circle-2" class="w-3 h-3 text-emerald-500"></i> Rendición completada
-          </div>
-        `
-        }
+        <!-- Botón o indicador final -->
+        <div class="mt-1.5">
+          ${
+            !estaCerrado
+              ? `
+            <button onclick="abrirModalRendicion(${c.id})" 
+              class="w-full py-1.5 bg-red-50 text-red-600 font-semibold text-[10px] rounded-lg hover:bg-red-600 hover:text-white transition flex items-center justify-center gap-1 border border-red-100 shadow-xs">
+              <i data-lucide="package-check" class="w-3 h-3"></i> Cierre
+            </button>
+          `
+              : `
+            <div class="text-center text-[9px] text-emerald-600 font-medium py-1 flex items-center justify-center gap-1 bg-emerald-50/50 rounded-lg border border-emerald-100">
+              <i data-lucide="check-circle-2" class="w-3 h-3 text-emerald-500"></i> Listo
+            </div>
+          `
+          }
+        </div>
       </div>
     `;
   });

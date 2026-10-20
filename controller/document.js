@@ -1064,13 +1064,22 @@ window.abrirModalEditarRegistro = function (item) {
     spanCodigo.textContent = item.codigo_barras || item.id || "---";
   }
 
+  // ⚖️ Conversión del peso al abrir: de decimal kg (0.050) a número natural en gramos (50)
+  let pesoNatural = "";
+  if (item.peso !== null && item.peso !== undefined && item.peso !== "") {
+    const pesoNum = parseFloat(item.peso);
+    if (!isNaN(pesoNum)) {
+      pesoNatural = pesoNum < 1 && pesoNum > 0 ? Math.round(pesoNum * 1000) : Math.round(pesoNum);
+    }
+  }
+
   // 2. Rellenar los campos básicos del formulario
   const campos = {
     "input-hoja-ruta-edicion": item.hoja_ruta || "",
     "input-documento-edicion": item.doc_emitido || item.documento || "",
     "input-destinatario-edicion": item.destinatario || "",
     "input-direccion-edicion": item.direccion || "",
-    "input-peso-edicion": item.peso || "",
+    "input-peso-edicion": pesoNatural,
   };
 
   for (const [id, valor] of Object.entries(campos)) {
@@ -1170,16 +1179,16 @@ window.toggleUbicacionEdicion = function (checkbox) {
         provSelect.disabled = true;
       }
       if (distSelect) {
-        distSelect.innerHTML = `<option value="${itemActualEnEdicion.ubigeo || itemActualEnEdicion.distrito_id || ""}">${itemActualEnEdicion.distrito || itemActualEnEdicion.ubigeo_nombre || ""}</option>`;
-        distSelect.value =
-          itemActualEnEdicion.ubigeo || itemActualEnEdicion.distrito_id || "";
+        const idDistritoOriginal = itemActualEnEdicion.ubigeo_id || itemActualEnEdicion.ubigeo || itemActualEnEdicion.distrito_id || "";
+        distSelect.innerHTML = `<option value="${idDistritoOriginal}">${itemActualEnEdicion.distrito || itemActualEnEdicion.ubigeo_nombre || ""}</option>`;
+        distSelect.value = idDistritoOriginal;
         distSelect.disabled = true;
       }
     }
   }
 };
 
-// Función para guardar cambios (puedes adaptarla a tu endpoint)
+// Función para guardar cambios
 window.guardarCambiosEdicionRegistro = async function () {
   if (!itemActualEnEdicion) {
     console.error("❌ No hay ningún ítem en edición.");
@@ -1187,7 +1196,7 @@ window.guardarCambiosEdicionRegistro = async function () {
     return;
   }
 
-  // 🎯 Capturamos correctamente el ID usando 'documento_id' que es como viene en tu objeto
+  // 🎯 Capturamos correctamente el ID usando 'documento_id' o 'id'
   const idRegistro = itemActualEnEdicion.documento_id || itemActualEnEdicion.id;
 
   if (!idRegistro) {
@@ -1206,8 +1215,10 @@ window.guardarCambiosEdicionRegistro = async function () {
     document.getElementById("input-destinatario-edicion")?.value.trim() || "";
   const direccion =
     document.getElementById("input-direccion-edicion")?.value.trim() || "";
-  const peso =
-    parseFloat(document.getElementById("input-peso-edicion")?.value) || 0;
+  
+  // ⚖️ Conversión del peso: de gramos (ej. 50) a decimal en kilogramos convertido a TEXTO (ej. "0.050")
+  const pesoInput = parseFloat(document.getElementById("input-peso-edicion")?.value) || 0;
+  const pesoDecimalTexto = pesoInput > 0 ? (pesoInput / 1000).toFixed(3) : "0.000";
 
   // 2. Validaciones básicas obligatorias
   if (!hojaRuta) {
@@ -1224,12 +1235,12 @@ window.guardarCambiosEdicionRegistro = async function () {
     return;
   }
 
-  // 3. Manejar el Ubigeo según el estado del Checkbox de edición
+  // 3. 🔒 LÓGICA DE UBIGEO BLINDADA:
   const checkUbicacion = document.getElementById("check-editar-ubicacion");
-  let ubigeoFinal =
-    itemActualEnEdicion.ubigeo_id || itemActualEnEdicion.ubigeo || "";
+  let ubigeoFinal = "";
 
   if (checkUbicacion && checkUbicacion.checked) {
+    // 🟢 Si el checkbox SÍ está activo, tomamos el nuevo ID seleccionado en el select de distrito
     const selectDistrito = document.getElementById("input-distrito-edicion");
     ubigeoFinal = selectDistrito ? selectDistrito.value : "";
 
@@ -1242,16 +1253,29 @@ window.guardarCambiosEdicionRegistro = async function () {
       }
       return;
     }
+  } else {
+    // 🔒 Si el checkbox NO está activo, mantenemos obligatoriamente el ID original del registro sin alterar nada
+    ubigeoFinal = 
+      itemActualEnEdicion.ubigeo_id || 
+      itemActualEnEdicion.ubigeo || 
+      itemActualEnEdicion.distrito_id || 
+      document.getElementById("input-distrito-edicion")?.value || 
+      "";
   }
 
-  // 4. Construir el objeto con los campos exactos para Supabase
+  if (!ubigeoFinal) {
+    alert("Error: No se pudo determinar el Ubigeo original del registro.");
+    return;
+  }
+
+  // 4. Construir el objeto asegurando enteros válidos y texto en el peso
   const datosActualizados = {
-    tipo_servicio_id: tipoServicio,
+    tipo_servicio_id: parseInt(tipoServicio),
     doc_emitido: documentoEm,
     destinatario: destinatario,
     direccion: direccion,
-    ubigeo_id: ubigeoFinal,
-    peso: peso,
+    ubigeo_id: parseInt(ubigeoFinal), // 👈 Mantiene siempre el ID original o el nuevo de forma estricta
+    peso: pesoDecimalTexto,          // 👈 Guarda el peso en formato decimal de texto ("0.050")
     hoja_ruta: hojaRuta,
   };
 

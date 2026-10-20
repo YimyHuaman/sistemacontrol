@@ -1,43 +1,52 @@
 <!-- ========================================== -->
 <!-- MÓDULO DE JORNADA / CIERRE DE CARTEROS -->
 <!-- ========================================== -->
-<div class="space-y-4">
-  
-  <!-- Cabecera del Módulo -->
-  <div class="bg-white p-3 rounded-xl shadow-sm border border-slate-200 flex items-center justify-between gap-3 flex-wrap">
-    <div class="flex-shrink-0">
-      <h2 class="text-base font-bold text-slate-800">Cierre de Jornada - Carteros</h2>
-      <p class="text-[11px] text-slate-500">Gestión diaria de entregas y devoluciones (Cierre automático 7:00 PM)</p>
+<div class="h-[calc(100vh-5rem)] flex flex-col space-y-3">
+
+    <!-- SECCIÓN ESTÁTICA (Cabecera + Buscador fijos arriba) -->
+    <div class="flex-shrink-0 space-y-3 bg-slate-50 pb-2 z-10">
+        
+        <!-- Cabecera del Módulo -->
+        <div class="bg-white p-3 rounded-xl shadow-sm border border-slate-200 flex items-center justify-between gap-3 flex-wrap">
+            <div class="flex-shrink-0">
+                <h2 class="text-base font-bold text-slate-800">Cierre de Jornada - Carteros</h2>
+                <p class="text-[11px] text-slate-500">Gestión diaria de entregas y devoluciones (Cierre automático 7:00 PM)</p>
+            </div>
+
+            <!-- Reloj y Estado del Sistema en tiempo real -->
+            <div class="flex items-center gap-3">
+                <div class="text-right bg-slate-50 px-3 py-1.5 rounded-lg border border-slate-100">
+                    <p class="text-[10px] font-semibold text-slate-400 uppercase">Hora Sistema</p>
+                    <p id="reloj-jornada" class="text-xs font-mono font-bold text-slate-700">--:--:--</p>
+                </div>
+                <span id="badge-estado-jornada" class="text-[11px] font-medium px-2.5 py-1 rounded-lg bg-emerald-100 text-emerald-800">
+                    Jornada Abierta
+                </span>
+            </div>
+        </div>
+
+        <!-- Barra de búsqueda rápida -->
+        <div class="flex items-center justify-between">
+            <div class="relative w-full max-w-xs">
+                <span class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
+                    <i data-lucide="search" class="w-4 h-4 text-slate-400"></i>
+                </span>
+                <input type="text" id="input-buscar-cartero" oninput="filtrarCarteros()"
+                    placeholder="Buscar cartero por nombre..."
+                    class="w-full pl-9 pr-3 py-1.5 bg-white border border-slate-200 rounded-lg text-xs focus:ring-2 focus:ring-blue-500 focus:outline-none transition shadow-xs">
+            </div>
+        </div>
+
     </div>
 
-    <!-- Reloj y Estado del Sistema en tiempo real -->
-    <div class="flex items-center gap-3">
-      <div class="text-right bg-slate-50 px-3 py-1.5 rounded-lg border border-slate-100">
-        <p class="text-[10px] font-semibold text-slate-400 uppercase">Hora Sistema</p>
-        <p id="reloj-jornada" class="text-xs font-mono font-bold text-slate-700">--:--:--</p>
-      </div>
-      <span id="badge-estado-jornada" class="text-[11px] font-medium px-2.5 py-1 rounded-lg bg-emerald-100 text-emerald-800">
-        Jornada Abierta
-      </span>
+    <!-- SECCIÓN CON SCROLL (Contenedor de tarjetas independiente) -->
+    <div class="flex-1 overflow-y-auto pr-1">
+        <!-- Grilla ultracompacta: de 2 a 8 columnas según la pantalla -->
+        <div class="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-6 xl:grid-cols-8 gap-2 pb-4"
+            id="contenedor-tarjetas-carteros">
+            <!-- Se llena dinámicamente con JavaScript -->
+        </div>
     </div>
-  </div>
-
-  <!-- Barra de búsqueda rápida -->
-  <div class="flex items-center justify-between">
-    <div class="relative w-full max-w-xs">
-      <span class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
-        <i data-lucide="search" class="w-4 h-4 text-slate-400"></i>
-      </span>
-      <input type="text" id="input-buscar-cartero" oninput="filtrarCarteros()"
-        placeholder="Buscar cartero por nombre..." 
-        class="w-full pl-9 pr-3 py-1.5 bg-white border border-slate-200 rounded-lg text-xs focus:ring-2 focus:ring-blue-500 focus:outline-none transition">
-    </div>
-  </div>
-
-  <!-- Contenedor de Tarjetas (Grilla de 4 Columnas) -->
-  <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3" id="contenedor-tarjetas-carteros">
-    <!-- Se llena dinámicamente con JavaScript -->
-  </div>
 
 </div>
 
@@ -45,44 +54,49 @@
 <!-- ========================================== -->
 <!-- MODAL DE RENDICIÓN DE CARTERO (COMPACTO) -->
 <!-- ========================================== -->
-<div id="modal-rendicion" class="fixed inset-0 bg-slate-900/50 hidden backdrop-blur-sm flex items-center justify-center p-3 z-50">
-  <div class="bg-white rounded-xl shadow-xl max-w-xs w-full p-4 relative border border-slate-100">
-    
-    <!-- Cabecera compacta -->
-    <h3 class="text-xs font-bold text-slate-800 mb-0.5" id="modal-titulo-cartero">Rendición de Cartero</h3>
-    <p class="text-[10px] text-slate-500 mb-3">Ingresa el balance de envíos para este cierre.</p>
+<div id="modal-rendicion"
+    class="fixed inset-0 bg-slate-900/50 hidden backdrop-blur-sm flex items-center justify-center p-3 z-50">
+    <div class="bg-white rounded-xl shadow-xl max-w-xs w-full p-4 relative border border-slate-100">
 
-    <form id="form-rendicion" onsubmit="guardarRendicionCartero(event)">
-      <input type="hidden" id="input-cartero-id">
+        <!-- Cabecera compacta -->
+        <h3 class="text-xs font-bold text-slate-800 mb-0.5" id="modal-titulo-cartero">Rendición de Cartero</h3>
+        <p class="text-[10px] text-slate-500 mb-3">Ingresa el balance de envíos para este cierre.</p>
 
-      <!-- Campo Entregados -->
-      <div class="mb-2.5">
-        <label class="block text-[10px] font-semibold text-slate-700 mb-0.5">Envíos Entregados</label>
-        <input type="number" id="input-entregados" min="0" required oninput="calcularTotalModal()"
-          class="w-full border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs focus:ring-2 focus:ring-blue-500 focus:outline-none" placeholder="Ej. 18">
-      </div>
+        <form id="form-rendicion" onsubmit="guardarRendicionCartero(event)">
+            <input type="hidden" id="input-cartero-id">
 
-      <!-- Campo Devueltos -->
-      <div class="mb-2.5">
-        <label class="block text-[10px] font-semibold text-slate-700 mb-0.5">Envíos Devueltos</label>
-        <input type="number" id="input-devueltos" min="0" required oninput="calcularTotalModal()"
-          class="w-full border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs focus:ring-2 focus:ring-blue-500 focus:outline-none" placeholder="Ej. 2">
-      </div>
+            <!-- Campo Entregados -->
+            <div class="mb-2.5">
+                <label class="block text-[10px] font-semibold text-slate-700 mb-0.5">Envíos Entregados</label>
+                <input type="number" id="input-entregados" min="0" required oninput="calcularTotalModal()"
+                    class="w-full border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                    placeholder="Ej. 18">
+            </div>
 
-      <!-- Resumen Total compacto -->
-      <div class="bg-slate-50 px-2.5 py-2 rounded-lg mb-3 flex justify-between items-center border border-slate-200">
-        <span class="text-[10px] text-slate-600 font-medium">Total Asignados:</span>
-        <span class="text-xs font-bold text-blue-600" id="label-total-modal">0</span>
-      </div>
+            <!-- Campo Devueltos -->
+            <div class="mb-2.5">
+                <label class="block text-[10px] font-semibold text-slate-700 mb-0.5">Envíos Devueltos</label>
+                <input type="number" id="input-devueltos" min="0" required oninput="calcularTotalModal()"
+                    class="w-full border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                    placeholder="Ej. 2">
+            </div>
 
-      <!-- Botones de Acción compactos -->
-      <div class="flex justify-end gap-1.5 pt-2 border-t border-slate-100">
-        <button type="button" onclick="cerrarModalRendicion()" class="px-3 py-1 text-[11px] text-slate-600 hover:bg-slate-100 rounded-lg font-medium transition">Cancelar</button>
-        <button type="submit" class="px-3.5 py-1 text-[11px] bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition shadow-sm">Guardar Cierre</button>
-      </div>
-    </form>
+            <!-- Resumen Total compacto -->
+            <div
+                class="bg-slate-50 px-2.5 py-2 rounded-lg mb-3 flex justify-between items-center border border-slate-200">
+                <span class="text-[10px] text-slate-600 font-medium">Total Asignados:</span>
+                <span class="text-xs font-bold text-blue-600" id="label-total-modal">0</span>
+            </div>
 
-  </div>
+            <!-- Botones de Acción compactos -->
+            <div class="flex justify-end gap-1.5 pt-2 border-t border-slate-100">
+                <button type="button" onclick="cerrarModalRendicion()"
+                    class="px-3 py-1 text-[11px] text-slate-600 hover:bg-slate-100 rounded-lg font-medium transition">Cancelar</button>
+                <button type="submit"
+                    class="px-3.5 py-1 text-[11px] bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition shadow-sm">Guardar
+                    Cierre</button>
+            </div>
+        </form>
+
+    </div>
 </div>
-
-
