@@ -232,7 +232,7 @@ window.renderizarGridConsolidado = function (data) {
   const totalPeso = data.reduce((acc, row) => acc + (Number(row.peso) || 0), 0);
   const totalCantidad = data.reduce((acc, row) => acc + (Number(row.cantidad) || 0), 0);
 
-  // 2. Mapeo de filas para Grid.js con estilos de color idénticos a los tuyos
+  // 2. Mapeo de filas para Grid.js (Peso con 3 decimales .toFixed(3))
   const rowsData = data.map((row) => [
     gridjs.html(`<span class="text-blue-600 font-semibold">${row.guia_admision || "-"}</span>`),
     row.codigo || "-",
@@ -254,7 +254,7 @@ window.renderizarGridConsolidado = function (data) {
     formatearFechaDMY(row.fecha_descargo),
     formatearFechaDMY(row.fecha_devolucion),
     gridjs.html(`<span class="text-amber-600 font-semibold">${row.guia_devolucion || "-"}</span>`),
-    gridjs.html(`<span class="text-right font-medium text-slate-700">${row.peso !== null && row.peso !== undefined ? Number(row.peso).toFixed(2) : "0.00"}</span>`),
+    gridjs.html(`<span class="text-right font-medium text-slate-700">${row.peso !== null && row.peso !== undefined ? Number(row.peso).toFixed(3) : "0.000"}</span>`),
     gridjs.html(`<span class="text-right font-medium text-slate-700">${row.cantidad !== null && row.cantidad !== undefined ? row.cantidad : "0"}</span>`),
   ]);
 
@@ -263,7 +263,7 @@ window.renderizarGridConsolidado = function (data) {
     window.gridConsolidadoInstance = null;
   }
 
-  // Limpiar contenedor e inyectar cabecera superior de totales antes del grid
+  // Limpiar contenedor e inyectar cabecera superior de totales
   contenedor.innerHTML = `
     <div class="mb-4 flex items-center justify-between px-1">
       <div class="inline-flex items-center gap-2 bg-blue-50/80 border border-blue-100 px-3 py-1.5 rounded-lg text-xs font-medium text-slate-700 shadow-xs">
@@ -278,7 +278,7 @@ window.renderizarGridConsolidado = function (data) {
 
   const gridSubContainer = document.getElementById("grid-table-element-consolidado");
 
-  // 3. Inicializar Grid.js
+  // 3. Inicializar Grid.js sin paginación ni búsqueda (mostrando todo en general)
   window.gridConsolidadoInstance = new gridjs.Grid({
     columns: [
       "Guia Adm.",
@@ -305,24 +305,9 @@ window.renderizarGridConsolidado = function (data) {
       "Cantidad",
     ],
     data: rowsData,
-    pagination: { 
-      limit: window.limiteTablaConsolidado,
-      summary: true 
-    },
-    search: { placeholder: "Escribe para buscar en el consolidado..." },
+    pagination: false, // Sin paginación para mostrar todo general
+    search: false,     // Sin buscador superior
     sort: true,
-    language: {
-      search: { placeholder: "Escribe para buscar..." },
-      pagination: {
-        previous: "Anterior",
-        next: "Siguiente",
-        showing: "Mostrando",
-        of: "de",
-        to: "a",
-        results: "registros",
-      },
-      noRecordsFound: "No se encontraron registros coincidentes",
-    },
     style: {
       table: { "font-size": "11px", width: "100%", "white-space": "nowrap" },
       th: {
@@ -342,42 +327,8 @@ window.renderizarGridConsolidado = function (data) {
 
   window.gridConsolidadoInstance.render(gridSubContainer);
 
-  // 4. Inserción del selector estático de filas (10, 20, 30, Todos) y el pie con Totales
+  // 4. Agregar la fila de totales generales al pie de la tabla
   window.gridConsolidadoInstance.on('ready', () => {
-    const summaryContainer = gridSubContainer.querySelector(".gridjs-summary");
-    if (summaryContainer && !gridSubContainer.querySelector("#select-grid-limit-consolidado")) {
-      const selectHtml = `
-        <span class="ml-4 inline-flex items-center gap-1 text-xs text-slate-500">
-          Mostrar:
-          <select id="select-grid-limit-consolidado" class="border border-slate-300 rounded px-1.5 py-0.5 text-xs bg-white focus:outline-none focus:ring-1 focus:ring-blue-500 cursor-pointer">
-            <option value="5" ${window.limiteTablaConsolidado === 5 ? 'selected' : ''}>5</option>
-            <option value="10" ${window.limiteTablaConsolidado === 10 ? 'selected' : ''}>10</option>
-            <option value="15" ${window.limiteTablaConsolidado === 15 ? 'selected' : ''}>15</option>
-            <option value="20" ${window.limiteTablaConsolidado === 20 ? 'selected' : ''}>20</option>
-            <option value="30" ${window.limiteTablaConsolidado === 30 ? 'selected' : ''}>30</option>
-            <option value="10000" ${window.limiteTablaConsolidado === 10000 ? 'selected' : ''}>Todos</option>
-          </select>
-          filas
-        </span>
-      `;
-      summaryContainer.insertAdjacentHTML("beforeend", selectHtml);
-
-      const selectEl = gridSubContainer.querySelector("#select-grid-limit-consolidado");
-      if (selectEl) {
-        selectEl.addEventListener("change", (e) => {
-          const valor = e.target.value;
-          window.limiteTablaConsolidado = parseInt(valor, 10);
-          
-          window.gridConsolidadoInstance
-            .updateConfig({
-              pagination: { limit: window.limiteTablaConsolidado },
-            })
-            .forceRender();
-        });
-      }
-    }
-
-    // Agregar la fila de totales generales al pie de la tabla de Grid.js si no existe
     const tableEl = gridSubContainer.querySelector("table");
     if (tableEl && !tableEl.querySelector("tfoot")) {
       const tfoot = document.createElement("tfoot");
@@ -385,7 +336,7 @@ window.renderizarGridConsolidado = function (data) {
       tfoot.innerHTML = `
         <tr>
           <td colspan="20" class="p-2.5 text-right tracking-wide">TOTALES GENERALES:</td>
-          <td class="p-2.5 border-r border-slate-200 text-right text-amber-700">${totalPeso.toFixed(2)}</td>
+          <td class="p-2.5 border-r border-slate-200 text-right text-amber-700">${totalPeso.toFixed(3)}</td>
           <td class="p-2.5 text-right text-blue-700">${totalCantidad}</td>
         </tr>
       `;
@@ -451,36 +402,40 @@ window.exportarExcelDistribucion = function () {
 
   const datosMapeados = [];
 
-  // 2. Recorrer cada fila visible en el grid para extraer sus datos exactos (omitimos celdas[0] que es el servicio duplicado)
+  // 2. Recorrer cada fila de la tabla sin excluir ningún orden (exporta todo)
   filas.forEach((tr, index) => {
     const celdas = tr.querySelectorAll("td");
-    if (celdas.length < 21) return; // Asegurar que tenga todas las columnas
+    if (celdas.length < 10) return; // Asegurar que tenga suficientes celdas
 
     datosMapeados.push({
-      "N°": index + 1, // Numeración correlativa automática (1, 2, 3...)
-      // Omitimos celdas[0] ("Servicio (Código)")
-      "Hoja Ruta": celdas[1].innerText.trim(),
-      "Doc. Emitido": celdas[2].innerText.trim(),
-      "Guia Adm.": celdas[3].innerText.trim(),
-      "Código Barras": celdas[4].innerText.trim(),
-      "Orden": celdas[5].innerText.trim(),
-      "Destinatario": celdas[6].innerText.trim(),
-      "Dirección / Ubigeo": celdas[7].innerText.trim(),
-      "Departamento": celdas[8].innerText.trim(),
-      "Provincia": celdas[9].innerText.trim(),
-      "Distrito": celdas[10].innerText.trim(),
-      "Estado": celdas[11].innerText.trim(),
-      "Acceso": celdas[12].innerText.trim(),
-      "Servicio (Desc)": celdas[13].innerText.trim(),
-      "Fecha Admisión": celdas[14].innerText.trim(),
-      "Fecha Entrega": celdas[15].innerText.trim(),
-      "Fecha Descargo": celdas[16].innerText.trim(),
-      "Fecha Devolución": celdas[17].innerText.trim(),
-      "Guia Dev.": celdas[18].innerText.trim(),
-      "Peso": celdas[19].innerText.trim(),
-      "Cantidad": celdas[20].innerText.trim()
+      "N°": index + 1, // Numeración correlativa secuencial (1, 2, 3...)
+      "Hoja Ruta": celdas[2] ? celdas[2].innerText.trim() : "",
+      "Doc. Emitido": celdas[3] ? celdas[3].innerText.trim() : "",
+      "Guia Adm.": celdas[4] ? celdas[4].innerText.trim() : "",
+      "Código Barras": celdas[5] ? celdas[5].innerText.trim() : "",
+      "Orden": celdas[6] ? celdas[6].innerText.trim() : "",
+      "Destinatario": celdas[7] ? celdas[7].innerText.trim() : "",
+      "Dirección / Ubigeo": celdas[8] ? celdas[8].innerText.trim() : "",
+      "Departamento": celdas[9] ? celdas[9].innerText.trim() : "",
+      "Provincia": celdas[10] ? celdas[10].innerText.trim() : "",
+      "Distrito": celdas[11] ? celdas[11].innerText.trim() : "",
+      "Estado": celdas[12] ? celdas[12].innerText.trim() : "",
+      "Acceso": celdas[13] ? celdas[13].innerText.trim() : "",
+      "Servicio (Desc)": celdas[14] ? celdas[14].innerText.trim() : "",
+      "Fecha Admisión": celdas[15] ? celdas[15].innerText.trim() : "",
+      "Fecha Entrega": celdas[16] ? celdas[16].innerText.trim() : "",
+      "Fecha Descargo": celdas[17] ? celdas[17].innerText.trim() : "",
+      "Fecha Devolución": celdas[18] ? celdas[18].innerText.trim() : "",
+      "Guia Dev.": celdas[19] ? celdas[19].innerText.trim() : "",
+      "Peso": celdas[20] ? celdas[20].innerText.trim() : "",
+      "Cantidad": celdas[21] ? celdas[21].innerText.trim() : ""
     });
   });
+
+  if (datosMapeados.length === 0) {
+    alert("No hay datos para exportar.");
+    return;
+  }
 
   // 3. Validar si la librería XLSX está cargada
   if (typeof XLSX === "undefined") {
@@ -509,7 +464,7 @@ window.exportarExcelDistribucion = function () {
   const wsData = XLSX.utils.json_to_sheet(datosMapeados, { origin: "A3" });
   XLSX.utils.sheet_add_aoa(wsData, headerRows, { origin: "A1" });
 
-  // Ajuste visual de anchos de columnas (sin la columna de código de servicio)
+  // Ajuste visual de anchos de columnas
   wsData["!cols"] = [
     { wch: 5 },  // N°
     { wch: 15 }, // Hoja Ruta

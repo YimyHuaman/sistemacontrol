@@ -11,6 +11,7 @@
   "dependencies": {
     "@supabase/supabase-js": "^2.116.0",
     "gridjs": "^6.2.0",
+    "jsbarcode": "^3.12.3",
     "lucide": "^1.46.0",
     "pdfmake": "^0.3.11",
     "sweetalert2": "^11.26.25",
